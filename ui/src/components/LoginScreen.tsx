@@ -18,6 +18,7 @@ type Props = {
  */
 const LoginScreen: React.FC<Props> = ({onLogin}) => {
   const [username, setUsername] = React.useState('');
+  const [walletAddress, setWalletAddress] = React.useState('');
 
   const login = useCallback(async (credentials: Credentials) => {
     try {
@@ -64,34 +65,38 @@ const LoginScreen: React.FC<Props> = ({onLogin}) => {
       <Grid.Column style={{ maxWidth: 450 }}>
         <Header as='h1' textAlign='center' size='huge' style={{color: '#223668'}}>
           <Header.Content>
-            Create
-            <Image
-              as='a'
-              href='https://www.daml.com/'
-              target='_blank'
-              src='/daml.svg'
-              alt='Daml Logo'
-              spaced
-              size='small'
-              verticalAlign='bottom'
-            />
-            App
+            OpenT.io
           </Header.Content>
+          <Header.Subheader>
+            The "T" stands for Topl
+          </Header.Subheader>
         </Header>
         <Form size='large' className='test-select-login-screen'>
           <Segment>
             {deploymentMode !== DeploymentMode.PROD_DAML_HUB
             ? <>
                 {/* FORM_BEGIN */}
-                <Form.Input
-                  fluid
-                  icon='user'
-                  iconPosition='left'
-                  placeholder='Username'
-                  value={username}
-                  className='test-select-username-field'
-                  onChange={e => setUsername(e.currentTarget.value)}
-                />
+                <Form>
+                  <Form.Input
+                    fluid
+                    icon='user'
+                    iconPosition='left'
+                    placeholder='Username'
+                    value={username}
+                    className='test-select-username-field'
+                    onChange={e => setUsername(e.currentTarget.value)}
+                  />
+                  <Form.Input 
+                    fluid
+                    icon='key'
+                    iconPosition='left'
+                    placeholder='Wallet Address'
+                    value={walletAddress}
+                    className='test-select-wallet-address-field'
+                    onChange={e => setWalletAddress(e.currentTarget.value)}
+                    style={{margin: '0 0 16px 0'}}
+                  />
+                </Form>
                 <Button
                   primary
                   fluid

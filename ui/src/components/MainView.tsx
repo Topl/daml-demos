@@ -57,14 +57,10 @@ const MainView: React.FC = () => {
                 <Icon name='user' />
                 <Header.Content>
                   {myUser?.username ?? 'Loading...'}
-                  <Header.Subheader>Users I'm following</Header.Subheader>
                 </Header.Content>
               </Header>
               <Divider />
-              <PartyListEdit
-                parties={myUser?.following ?? []}
-                onAddParty={follow}
-              />
+                <Header.Subheader>Wallet Address: {myUser?.walletAddress ?? 'None'}</Header.Subheader>
             </Segment>
             <Segment>
               <Header as='h2'>
