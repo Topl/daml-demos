@@ -1,7 +1,7 @@
 import React from 'react'
 import { Form, Button } from 'semantic-ui-react';
 import { Party } from '@daml/types';
-import { User } from '@daml.js/create-daml-app';
+import { User } from '@daml.js/opent-app';
 import { useParty, useLedger } from '@daml/react';
 
 type Props = {

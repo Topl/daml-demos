@@ -5,7 +5,7 @@ import React, { useCallback } from 'react'
 import { Button, Form, Grid, Header, Image, Segment } from 'semantic-ui-react'
 import Credentials, { computeCredentials } from '../Credentials';
 import Ledger from '@daml/ledger';
-import { User } from '@daml.js/create-daml-app';
+import { User } from '@daml.js/opent-app';
 import { DeploymentMode, deploymentMode, ledgerId, httpBaseUrl} from '../config';
 import { useEffect } from 'react';
 

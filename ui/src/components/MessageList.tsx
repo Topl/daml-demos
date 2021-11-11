@@ -1,6 +1,6 @@
 import React from 'react'
 import { List, ListItem } from 'semantic-ui-react';
-import { User } from '@daml.js/create-daml-app';
+import { User } from '@daml.js/opent-app';
 import { useStreamQuery } from '@daml/react';
 
 /**

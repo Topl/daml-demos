@@ -1,7 +1,7 @@
 import React from 'react'
 import { Form } from 'semantic-ui-react'
 import { Party } from '@daml/types'
-import { User } from '@daml.js/create-daml-app'
+import { User } from '@daml.js/opent-app'
 import { useParty, useLedger } from '@daml/react'
 import { List, ListItem } from 'semantic-ui-react'
 import { useStreamQuery } from '@daml/react'

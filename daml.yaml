@@ -1,5 +1,5 @@
 sdk-version: 1.17.1
-name: OpenT.io
+name: opent-app
 version: 0.1.0
 source: daml
 parties:
@@ -12,7 +12,7 @@ dependencies:
 - daml-trigger
 sandbox-options:
 - --wall-clock-time
-- --ledgerid=create-daml-app-sandbox
+- --ledgerid=opent-app-sandbox
 start-navigator: false
 codegen:
   js:
