@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en"
+      xmlns:th="http://wwww.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Welcome to DAML-Lattice Demo</title>
+    <!-- CSS only -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.1/dist/css/bootstrap.min.css"
+          rel="stylesheet"
+          integrity="sha384-iYQeCzEYFbKjA/T2uDLTpkwGzCiq6soy8tYaI1GyVh/UjpbCx/TYkiZhlZB6+fzT"
+          crossorigin="anonymous">
+    <!-- JavaScript Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.1/dist/js/bootstrap.bundle.min.js"
+            integrity="sha384-u1OknCvxWvY5kfmNBILK2hRnQC3Pr17a+RTT6rIHI7NnikvbZlHgTPOOmMi466C8"
+            crossorigin="anonymous"></script>
+</head>
+
+<body>
+    <nav th:replace="fragments/navigationBars.html :: usernavbar"></nav>
+    <div class="container">
+        <div class="row">
+            <h1>Update asset inventory entry</h1>
+        </div>
+        <div class="row">
+            <div class="card">
+                <div class="card-body">
+                    <form name="f"
+                          th:action="@{/home/organization/updateAssetInventory}"
+                          th:object="${updateAssetDto}"
+                          method="POST">
+                        <input type="hidden"
+                               th:field="*{orgName}"
+                               class="form-control">
+                        <input type="hidden"
+                               th:field="*{assetId}"
+                               class="form-control">
+                        <input type="hidden"
+                               th:field="*{inventoryId}"
+                               class="form-control">
+                        <input type="hidden"
+                               th:field="*{shortName}"
+                               class="form-control">
+                        <input type="hidden"
+                               th:field="*{contractId}"
+                               class="form-control">
+                        <div class="mb-3">
+                            <label for="metadata"
+                                   class="form-label">Metadata</label>
+                            <input type="text"
+                                   th:field="*{metadata}"
+                                   class="form-control">
+                        </div>
+                        <button id="submit"
+                                type="submit"
+                                class="btn btn-primary">Update</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en"
+      xmlns:th="http://wwww.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Welcome to DAML-Lattice Demo</title>
+    <!-- CSS only -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.1/dist/css/bootstrap.min.css"
+          rel="stylesheet"
+          integrity="sha384-iYQeCzEYFbKjA/T2uDLTpkwGzCiq6soy8tYaI1GyVh/UjpbCx/TYkiZhlZB6+fzT"
+          crossorigin="anonymous">
+    <!-- JavaScript Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.1/dist/js/bootstrap.bundle.min.js"
+            integrity="sha384-u1OknCvxWvY5kfmNBILK2hRnQC3Pr17a+RTT6rIHI7NnikvbZlHgTPOOmMi466C8"
+            crossorigin="anonymous"></script>
+</head>
+
+<body>
+    <nav th:replace="fragments/navigationBars.html :: usernavbar"></nav>
+    <div class="container">
+        <div class="row">
+            <h1>Manage assets</h1>
+        </div>
+        <p>
+            <a class="btn btn-primary"
+               th:href="@{/home/organization/{org}/addAsset(org=${orgName})}"
+               role="button"> <span class="glyphicon glyphicon glyphicon-plus"
+                      aria-hidden="true"></span> Add asset</a>
+        </p>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th scope="col">Asset name</th>
+                    <th scope="col">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="asset:${assets}">
+                    <td th:text="${asset.shortName}"></td>
+                    <td><a
+                           th:href="@{/home/organization/{orgName}/assetsInventory/{assetId}(orgName=${orgName}, assetId=${asset.id})}">See
+                            inventory</a></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+
+</html>
