@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en"
+      xmlns:th="http://wwww.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Welcome to DAML-Lattice Demo</title>
+    <!-- CSS only -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.1/dist/css/bootstrap.min.css"
+          rel="stylesheet"
+          integrity="sha384-iYQeCzEYFbKjA/T2uDLTpkwGzCiq6soy8tYaI1GyVh/UjpbCx/TYkiZhlZB6+fzT"
+          crossorigin="anonymous">
+    <!-- JavaScript Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.1/dist/js/bootstrap.bundle.min.js"
+            integrity="sha384-u1OknCvxWvY5kfmNBILK2hRnQC3Pr17a+RTT6rIHI7NnikvbZlHgTPOOmMi466C8"
+            crossorigin="anonymous"></script>
+</head>
+
+<body>
+    <nav th:replace="fragments/navigationBars.html :: usernavbar"></nav>
+    <div class="container">
+        <div class="row">
+            <h1>Manage Asset Inventory</h1>
+        </div>
+        <p>
+            <a class="btn btn-primary"
+               th:href="@{/home/organization/{orgName}/mintAsset/{assetId}(orgName=${orgName}, assetId=${assetId})}"
+               role="button"> <span class="glyphicon glyphicon glyphicon-plus"
+                      aria-hidden="true"></span> Mint asset</a>
+        </p>
+        <table class="table"
+               aria-labelledby="List of inventory">
+            <thead>
+                <tr>
+                    <th scope="col">Asset name</th>
+                    <th scope="col">Quantity</th>
+                    <th scope="col">Organization name</th>
+                    <th scope="col">Metadata</th>
+                    <th scope="col">Box Nonce</th>
+                    <th scope="col">ContractId</th>
+                    <th scope="col">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="asset:${assets}">
+                    <td th:text="${asset.shortName}"></td>
+                    <td th:text="${asset.quantity}"></td>
+                    <td th:text="${orgName}"></td>
+                    <td th:text="${asset.metadata}"></td>
+                    <td th:text="${asset.boxNonce}"></td>
+                    <td th:text="${asset.contractId}"></td>
+                    <td><a
+                           th:href="@{/home/organization/{orgName}/updateAsset/{assetId}/{inventoryId}(orgName=${orgName}, assetId=${assetId}, inventoryId=${asset.id})}">Update
+                            inventory entry</a>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+
+</html>
