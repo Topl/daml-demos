@@ -28,21 +28,20 @@ import com.daml.ledger.api.v1.CommandsOuterClass.ExerciseByKeyCommand;
 import com.daml.ledger.api.v1.CommandsOuterClass.ExerciseCommand;
 import com.daml.ledger.api.v1.ValueOuterClass.Identifier;
 import com.daml.ledger.api.v1.ValueOuterClass.Identifier.Builder;
+import com.daml.ledger.api.v1.ValueOuterClass.Record;
+import com.daml.ledger.api.v1.ValueOuterClass.RecordField;
+import com.daml.ledger.api.v1.ValueOuterClass.Value;
 import com.daml.ledger.javaapi.data.FiltersByParty;
 import com.daml.ledger.javaapi.data.LedgerOffset;
 import com.daml.ledger.javaapi.data.NoFilter;
 import com.daml.ledger.javaapi.data.Transaction;
 import com.daml.ledger.rxjava.DamlLedgerClient;
-import com.daml.ledger.api.v1.ValueOuterClass.Record;
-import com.daml.ledger.api.v1.ValueOuterClass.RecordField;
-import com.daml.ledger.api.v1.ValueOuterClass.Value;
 
 import co.topl.daml.DamlAppContext;
 import co.topl.daml.ToplContext;
 import co.topl.daml.assets.processors.SignedAssetTransferRequestProcessor;
 import co.topl.daml.assets.processors.SignedMintingRequestProcessor;
 import co.topl.daml.operator.AssetIouProcessor;
-import co.topl.latticedamldemo.LatticeDamlDemoApplication;
 import co.topl.latticedamldemo.configuration.DemoConfiguration;
 import co.topl.latticedamldemo.dtos.AddAssetCodeDto;
 import co.topl.latticedamldemo.dtos.MintOrUpdateAssetDto;
@@ -53,9 +52,6 @@ import co.topl.latticedamldemo.model.MembersRepository;
 import co.topl.latticedamldemo.model.Organization;
 import co.topl.latticedamldemo.model.OrganizationRepository;
 import io.reactivex.Flowable;
-
-import com.daml.ledger.javaapi.data.CreatedEvent;
-import com.daml.ledger.javaapi.data.Event;
 
 @Controller
 @RequestMapping("/home")
@@ -91,6 +87,11 @@ public class HomeController {
         @GetMapping
         public String getHomePage(Model model) {
                 return "user/home";
+        }
+
+        @GetMapping("/accessDenied")
+        public String getAccessDenied(Model model) {
+                return "user/accessDenied";
         }
 
         @GetMapping("/organizations")

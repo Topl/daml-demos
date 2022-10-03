@@ -99,6 +99,11 @@ public class AdminController {
                 return "admin/addUser";
         }
 
+        @GetMapping("/accessDenied")
+        public String getAccessDenied(Model model) {
+                return "admin/accessDenied";
+        }
+
         @PostMapping("/addUser")
         public RedirectView getAddUserSubmit(@ModelAttribute AddUserDto addUserDto, Model model) {
                 AllocatePartyResponse getPartyResponse = partyManagementService
