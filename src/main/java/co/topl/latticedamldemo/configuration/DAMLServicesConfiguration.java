@@ -30,7 +30,7 @@ public class DAMLServicesConfiguration {
     }
 
     @Bean
-    public CommandSubmissionServiceBlockingStub CommandSubmissionService() {
+    public CommandSubmissionServiceBlockingStub commandSubmissionService() {
         return CommandSubmissionServiceGrpc.newBlockingStub(channel);
     }
 

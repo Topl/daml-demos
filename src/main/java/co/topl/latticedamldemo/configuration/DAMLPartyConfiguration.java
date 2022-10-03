@@ -12,10 +12,11 @@ import com.daml.ledger.api.v1.admin.UserManagementServiceGrpc.UserManagementServ
 import com.daml.ledger.api.v1.admin.UserManagementServiceOuterClass.CreateUserRequest;
 import com.daml.ledger.api.v1.admin.UserManagementServiceOuterClass.User;
 
-import co.topl.latticedamldemo.LatticeDamlDemoApplication;
-
 @Configuration
 public class DAMLPartyConfiguration {
+
+        @Autowired
+        DemoConfiguration demoConfiguration;
 
         @Autowired
         private PartyManagementServiceBlockingStub partyManagementService;
@@ -27,14 +28,15 @@ public class DAMLPartyConfiguration {
         public PartyDetails operatorParty() {
                 AllocatePartyResponse getPartyResponse = partyManagementService
                                 .allocateParty(AllocatePartyRequest.newBuilder()
-                                                .setDisplayName(LatticeDamlDemoApplication.OPERATOR_ID)
-                                                .setPartyIdHint(LatticeDamlDemoApplication.OPERATOR_ID).build());
+                                                .setDisplayName(demoConfiguration.getOperatorId())
+                                                .setPartyIdHint(demoConfiguration.getOperatorId()).build());
 
                 userManagementService.createUser(
                                 CreateUserRequest.newBuilder()
                                                 .setUser(
                                                                 User.newBuilder()
-                                                                                .setId(LatticeDamlDemoApplication.OPERATOR_ID)
+                                                                                .setId(demoConfiguration
+                                                                                                .getOperatorId())
                                                                                 .setPrimaryParty(getPartyResponse
                                                                                                 .getPartyDetails()
                                                                                                 .getParty())

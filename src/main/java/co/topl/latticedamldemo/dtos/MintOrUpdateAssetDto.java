@@ -8,7 +8,7 @@ public class MintOrUpdateAssetDto {
     /**
      * Id of the inventory entry.
      */
-    private Long inventoryId;
+    private String iouIdentifier;
 
     /**
      * Id of the asset that has this inventory.

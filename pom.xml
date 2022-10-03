@@ -15,7 +15,7 @@
 	<name>lattice-daml-demo</name>
 	<description>Demo project for DAML and Topl</description>
 	<properties>
-		<java.version>17</java.version>
+		<java.version>11</java.version>
 	</properties>
 	<dependencies>
 		<dependency>

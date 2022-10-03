@@ -39,8 +39,11 @@ import com.daml.ledger.api.v1.ValueOuterClass.Value;
 
 import co.topl.daml.DamlAppContext;
 import co.topl.daml.ToplContext;
+import co.topl.daml.assets.processors.SignedAssetTransferRequestProcessor;
+import co.topl.daml.assets.processors.SignedMintingRequestProcessor;
 import co.topl.daml.operator.AssetIouProcessor;
 import co.topl.latticedamldemo.LatticeDamlDemoApplication;
+import co.topl.latticedamldemo.configuration.DemoConfiguration;
 import co.topl.latticedamldemo.dtos.AddAssetCodeDto;
 import co.topl.latticedamldemo.dtos.MintOrUpdateAssetDto;
 import co.topl.latticedamldemo.model.AssetCode;
@@ -51,9 +54,15 @@ import co.topl.latticedamldemo.model.Organization;
 import co.topl.latticedamldemo.model.OrganizationRepository;
 import io.reactivex.Flowable;
 
+import com.daml.ledger.javaapi.data.CreatedEvent;
+import com.daml.ledger.javaapi.data.Event;
+
 @Controller
 @RequestMapping("/home")
 public class HomeController {
+
+        @Autowired
+        DemoConfiguration demoConfiguration;
 
         @Autowired
         private OrganizationRepository organizationRepository;
@@ -75,6 +84,9 @@ public class HomeController {
 
         @Autowired
         SessionFactory sessionFactory;
+
+        @Autowired
+        Flowable<Transaction> transactions;
 
         @GetMapping
         public String getHomePage(Model model) {
@@ -141,7 +153,7 @@ public class HomeController {
 
         @GetMapping("/organization/{orgName}/updateAsset/{assetId}/{inventoryId}")
         public String getUpdateAssetInventory(@PathVariable String orgName, @PathVariable Long assetId,
-                        @PathVariable Long inventoryId, Model model) {
+                        @PathVariable String inventoryId, Model model) {
                 Optional<Organization> someOrganization = organizationRepository.findById(orgName);
                 model.addAttribute("orgName", orgName);
                 model.addAttribute("inventoryId", inventoryId);
@@ -155,7 +167,7 @@ public class HomeController {
                 }
                 AssetCodeInventoryEntry assetCodeInventoryEntry = null;
                 for (AssetCodeInventoryEntry entry : assetCode.getAssetCodeInventoryEntry()) {
-                        if (entry.getId().equals(inventoryId)) {
+                        if (entry.getIouIdentifier().equals(inventoryId)) {
                                 assetCodeInventoryEntry = entry;
                                 break;
                         }
@@ -163,7 +175,7 @@ public class HomeController {
                 MintOrUpdateAssetDto updateAssetDto = new MintOrUpdateAssetDto();
                 updateAssetDto.setOrgName(orgName);
                 updateAssetDto.setAssetId(assetId);
-                updateAssetDto.setInventoryId(assetCodeInventoryEntry.getId());
+                updateAssetDto.setIouIdentifier(assetCodeInventoryEntry.getIouIdentifier());
                 updateAssetDto.setShortName(assetCode.getShortName());
                 updateAssetDto.setContractId(assetCodeInventoryEntry.getContractId());
                 model.addAttribute("updateAssetDto", updateAssetDto);
@@ -181,7 +193,12 @@ public class HomeController {
                                 .setModuleName(co.topl.daml.api.model.topl.organization.AssetCreator.TEMPLATE_ID
                                                 .getModuleName());
                 Optional<Member> someUser = memberRepository.findById(principal.getName());
-                Optional<Member> someOperator = memberRepository.findById(LatticeDamlDemoApplication.OPERATOR_ID);
+                Optional<Member> someOperator = memberRepository.findById(demoConfiguration.getOperatorId());
+                SignedMintingRequestProcessor signedMintingRequestProcessor = new SignedMintingRequestProcessor(
+                                damlAppContext,
+                                toplContext,
+                                () -> java.util.UUID.randomUUID().toString());
+                transactions.forEachWhile(signedMintingRequestProcessor::processTransaction);
                 Command exerciseCommand = Command.newBuilder().setExerciseByKey(
                                 ExerciseByKeyCommand.newBuilder()
                                                 .setTemplateId(assetCreatorIdentifier.build())
@@ -270,7 +287,7 @@ public class HomeController {
                                                 Commands.newBuilder()
                                                                 .setCommandId(UUID.randomUUID().toString())
                                                                 .setParty(someUser.get().getPartyIdentifier())
-                                                                .setApplicationId(LatticeDamlDemoApplication.APP_ID)
+                                                                .setApplicationId(demoConfiguration.getAppId())
                                                                 .addCommands(exerciseCommand)
                                                                 .build())
                                 .build();
@@ -305,7 +322,7 @@ public class HomeController {
                 }
                 AssetCodeInventoryEntry assetCodeInventoryEntry = null;
                 for (AssetCodeInventoryEntry entry : assetCode.getAssetCodeInventoryEntry()) {
-                        if (entry.getId().equals(updateAssetDto.getInventoryId())) {
+                        if (entry.getIouIdentifier().equals(updateAssetDto.getIouIdentifier())) {
                                 assetCodeInventoryEntry = entry;
                                 // remove the old inventory entry
                                 assetCode.getAssetCodeInventoryEntry().remove(entry);
@@ -317,6 +334,12 @@ public class HomeController {
                 if (newMetadata.trim().isEmpty()) {
                         newMetadata = assetCodeInventoryEntry.getMetadata();
                 }
+                final String iouIdentifier = assetCodeInventoryEntry.getIouIdentifier();
+                SignedAssetTransferRequestProcessor signedTransferRequestProcessor = new SignedAssetTransferRequestProcessor(
+                                damlAppContext,
+                                toplContext,
+                                () -> iouIdentifier);
+                transactions.forEachWhile(signedTransferRequestProcessor::processTransaction);
                 Command exerciseCommand = Command.newBuilder().setExercise(
                                 ExerciseCommand.newBuilder()
                                                 .setTemplateId(assetIouIdentifier.build())
@@ -367,7 +390,7 @@ public class HomeController {
                                                 Commands.newBuilder()
                                                                 .setCommandId(UUID.randomUUID().toString())
                                                                 .setParty(someUser.get().getPartyIdentifier())
-                                                                .setApplicationId(LatticeDamlDemoApplication.APP_ID)
+                                                                .setApplicationId(demoConfiguration.getAppId())
                                                                 .addCommands(exerciseCommand)
                                                                 .build())
                                 .build();
@@ -403,7 +426,7 @@ public class HomeController {
                                                 .getModuleName());
 
                 Optional<Member> someUser = memberRepository.findById(principal.getName());
-                Optional<Member> someOperator = memberRepository.findById(LatticeDamlDemoApplication.OPERATOR_ID);
+                Optional<Member> someOperator = memberRepository.findById(demoConfiguration.getOperatorId());
 
                 Command exerciseCommand = Command.newBuilder().setExerciseByKey(
                                 ExerciseByKeyCommand.newBuilder()
@@ -454,7 +477,7 @@ public class HomeController {
                                                 Commands.newBuilder()
                                                                 .setCommandId(UUID.randomUUID().toString())
                                                                 .setParty(someUser.get().getPartyIdentifier())
-                                                                .setApplicationId(LatticeDamlDemoApplication.APP_ID)
+                                                                .setApplicationId(demoConfiguration.getAppId())
                                                                 .addCommands(exerciseCommand)
                                                                 .build())
                                 .build();
@@ -479,7 +502,7 @@ public class HomeController {
                                         Session session = sessionFactory.openSession();
                                         session.beginTransaction();
                                         Organization theOrg = session.find(Organization.class,
-                                                        assetIou.organization.orgName);
+                                                        assetIou.orgId);
                                         AssetCode theCode = null;
                                         for (AssetCode code : theOrg.getAssetCodes()) {
                                                 if (code.getId().equals(savedAssetCode.getId())) {
