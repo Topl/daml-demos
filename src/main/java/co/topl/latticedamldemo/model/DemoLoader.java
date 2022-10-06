@@ -70,23 +70,23 @@ public class DemoLoader implements CommandLineRunner {
                                                 operatorPartyDetails.getParty()));
                 MembershipAcceptanceProcessor membershipAcceptanceProcessor = new MembershipAcceptanceProcessor(
                                 damlAppContext,
-                                toplContext);
+                                toplContext, (x, y) -> true);
                 transactions.forEach(membershipAcceptanceProcessor::processTransaction);
                 AssetMintingRequestProcessor assetMintingRequestProcessor = new AssetMintingRequestProcessor(
                                 damlAppContext,
-                                toplContext);
+                                toplContext, 10000, (x, y) -> true);
                 transactions.forEach(assetMintingRequestProcessor::processTransaction);
                 UnsignedMintingRequestProcessor unsignedMintingRequestProcessor = new UnsignedMintingRequestProcessor(
                                 damlAppContext, toplContext, demoConfiguration.getKeyfileName(),
-                                demoConfiguration.getKeyfilePassword());
+                                demoConfiguration.getKeyfilePassword(), (x, y) -> true);
                 transactions.forEach(unsignedMintingRequestProcessor::processTransaction);
                 AssetTransferRequestProcessor assetTransferRequestProcessor = new AssetTransferRequestProcessor(
                                 damlAppContext,
-                                toplContext);
+                                toplContext, 10000, (x, y) -> true);
                 transactions.forEach(assetTransferRequestProcessor::processTransaction);
                 UnsignedAssetTransferRequestProcessor unsignedTransferRequestProcessor = new UnsignedAssetTransferRequestProcessor(
                                 damlAppContext, toplContext, demoConfiguration.getKeyfileName(),
-                                demoConfiguration.getKeyfilePassword());
+                                demoConfiguration.getKeyfilePassword(), (x, y) -> true);
                 transactions.forEach(unsignedTransferRequestProcessor::processTransaction);
         }
 

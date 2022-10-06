@@ -24,7 +24,7 @@
         </div>
         <p>
             <a class="btn btn-primary"
-               th:href="@{/home/organization/{org}/addAsset(org=${orgName})}"
+               th:href="@{/home/organization/{org}/addAsset(org=${orgId})}"
                role="button"> <span class="glyphicon glyphicon glyphicon-plus"
                       aria-hidden="true"></span> Add asset</a>
         </p>
@@ -40,7 +40,7 @@
                 <tr th:each="asset:${assets}">
                     <td th:text="${asset.shortName}"></td>
                     <td><a
-                           th:href="@{/home/organization/{orgName}/assetsInventory/{assetId}(orgName=${orgName}, assetId=${asset.id})}">See
+                           th:href="@{/home/organization/{orgId}/assetsInventory/{assetId}(orgId=${orgId}, assetId=${asset.id})}">See
                             inventory</a></td>
                 </tr>
             </tbody>

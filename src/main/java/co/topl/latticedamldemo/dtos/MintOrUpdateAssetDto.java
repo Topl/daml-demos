@@ -19,7 +19,7 @@ public class MintOrUpdateAssetDto {
 
     private Long quantity;
 
-    private String orgName;
+    private Long orgId;
 
     private String metadata;
 

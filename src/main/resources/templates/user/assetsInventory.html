@@ -24,7 +24,7 @@
         </div>
         <p>
             <a class="btn btn-primary"
-               th:href="@{/home/organization/{orgName}/mintAsset/{assetId}(orgName=${orgName}, assetId=${assetId})}"
+               th:href="@{/home/organization/{orgId}/mintAsset/{assetId}(orgId=${orgId}, assetId=${assetId})}"
                role="button"> <span class="glyphicon glyphicon glyphicon-plus"
                       aria-hidden="true"></span> Mint asset</a>
         </p>
@@ -50,7 +50,7 @@
                     <td th:text="${asset.boxNonce}"></td>
                     <td th:text="${asset.contractId}"></td>
                     <td><a
-                           th:href="@{/home/organization/{orgName}/updateAsset/{assetId}/{inventoryId}(orgName=${orgName}, assetId=${assetId}, inventoryId=${asset.id})}">Update
+                           th:href="@{/home/organization/{orgId}/updateAsset/{assetId}/{inventoryId}(orgId=${orgId}, assetId=${assetId}, inventoryId=${asset.iouIdentifier})}">Update
                             inventory entry</a>
                     </td>
                 </tr>

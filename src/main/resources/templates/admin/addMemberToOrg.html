@@ -41,9 +41,9 @@
                         <div class="mb-3">
                             <label class="form-label">Organization</label>
                             <select class="form-control"
-                                    th:field="*{orgName}">
+                                    th:field="*{orgId}">
                                 <option th:each="option : ${organizations}"
-                                        th:value="${option.orgName}"
+                                        th:value="${option.id}"
                                         th:text="${option.orgName}"></option>
                             </select>
                         </div>

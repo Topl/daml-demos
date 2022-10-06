@@ -33,7 +33,7 @@
             <tbody>
                 <tr th:each="organization:${organizations}">
                     <td th:text="${organization.orgName}"></td>
-                    <td> <a th:href="@{/home/organization/{orgName}/assets(orgName=${organization.orgName})}">See
+                    <td> <a th:href="@{/home/organization/{orgId}/assets(orgId=${organization.id})}">See
                             assets</a></td>
                 </tr>
             </tbody>

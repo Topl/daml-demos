@@ -78,6 +78,9 @@ public class AdminController {
         @Autowired
         CommandSubmissionServiceBlockingStub commandSubmissionService;
 
+        @Autowired
+        Flowable<Transaction> transactions;
+
         @GetMapping
         public String getMainAdminPage(Model model) {
                 return "admin/admin";
@@ -119,12 +122,8 @@ public class AdminController {
                                                 "USER",
                                                 party));
                 DamlAppContext damlAppContext = new DamlAppContext(demoConfiguration.getAppId(), party, client);
-                Flowable<Transaction> transactions = client.getTransactionsClient().getTransactions(
-                                LedgerOffset.LedgerEnd.getInstance(),
-                                new FiltersByParty(Collections.singletonMap(party, NoFilter.instance)),
-                                true);
                 MembershipOfferProcessor membershipOfferProcessor = new MembershipOfferProcessor(damlAppContext,
-                                toplContext);
+                                toplContext, (x, y) -> true);
                 transactions.forEach(membershipOfferProcessor::processTransaction);
                 RedirectView redirectView = new RedirectView();
                 redirectView.setUrl("/admin/users");
@@ -160,6 +159,8 @@ public class AdminController {
                                                 .getModuleName());
 
                 Optional<Member> someOperator = memberRepository.findById(demoConfiguration.getOperatorId());
+                Organization org = new Organization(addOrganizationDto.getOrgName());
+                org = organizationRepository.save(org);
 
                 Command createCommand = Command.newBuilder().setCreate(
                                 CreateCommand.newBuilder()
@@ -167,6 +168,11 @@ public class AdminController {
                                                 .setCreateArguments(
                                                                 Record.newBuilder()
                                                                                 .setRecordId(organizationIdentifier)
+                                                                                .addFields(RecordField.newBuilder()
+                                                                                                .setLabel("orgId")
+                                                                                                .setValue(Value.newBuilder()
+                                                                                                                .setText(org.getId()
+                                                                                                                                .toString())))
                                                                                 .addFields(RecordField.newBuilder()
                                                                                                 .setLabel("orgName")
                                                                                                 .setValue(Value.newBuilder()
@@ -196,7 +202,7 @@ public class AdminController {
                                                                                                                                 .newBuilder()
                                                                                                                                 .build())))
                                                                                 .addFields(RecordField.newBuilder()
-                                                                                                .setLabel("assetCodes")
+                                                                                                .setLabel("assetCodesAndIous")
                                                                                                 .setValue(Value.newBuilder()
                                                                                                                 .setList(com.daml.ledger.api.v1.ValueOuterClass.List
                                                                                                                                 .newBuilder()
@@ -216,9 +222,6 @@ public class AdminController {
 
                 commandSubmissionService.submit(commandSubmitRequest);
 
-                organizationRepository.save(
-                                new Organization(
-                                                addOrganizationDto.getOrgName()));
                 RedirectView redirectView = new RedirectView();
                 redirectView.setUrl("/admin/organizations");
                 return redirectView;
@@ -272,7 +275,7 @@ public class AdminController {
                                                                                                 .setValue(
                                                                                                                 Value.newBuilder()
                                                                                                                                 .setText(addMemberToOrgDto
-                                                                                                                                                .getOrgName())))))
+                                                                                                                                                .getOrgId())))))
                                                 .setChoice("Organization_InviteMember")
                                                 .setChoiceArgument(
                                                                 Value.newBuilder()
