@@ -36,7 +36,6 @@ import com.daml.ledger.rxjava.DamlLedgerClient;
 import co.topl.daml.DamlAppContext;
 import co.topl.daml.ToplContext;
 import co.topl.daml.api.model.topl.utils.sendstatus.Confirmed;
-import co.topl.daml.api.model.topl.utils.sendstatus.Sent;
 import co.topl.daml.assets.processors.SignedAssetTransferRequestProcessor;
 import co.topl.daml.assets.processors.SignedMintingRequestProcessor;
 import co.topl.daml.operator.AssetIouProcessor;
@@ -123,11 +122,13 @@ public class HomeController {
                                 break;
                         }
                 }
-                model.addAttribute("assets", assetCode.getAssetCodeInventoryEntry().stream()
-                                .map(p -> {
-                                        p.setContractId(p.getContractId().substring(0, 5) + "...");
-                                        return p;
-                                }).collect(Collectors.toList()));
+                if (assetCode != null) {
+                        model.addAttribute("assets", assetCode.getAssetCodeInventoryEntry().stream()
+                                        .map(p -> {
+                                                p.setContractId(p.getContractId().substring(0, 5) + "...");
+                                                return p;
+                                        }).collect(Collectors.toList()));
+                }
                 return "user/assetsInventory";
         }
 
@@ -143,11 +144,13 @@ public class HomeController {
                                 break;
                         }
                 }
-                MintOrUpdateAssetDto mintAssetDto = new MintOrUpdateAssetDto();
-                mintAssetDto.setOrgId(orgId);
-                mintAssetDto.setAssetId(assetId);
-                mintAssetDto.setShortName(assetCode.getShortName());
-                model.addAttribute("mintAssetDto", mintAssetDto);
+                if (assetCode != null) {
+                        MintOrUpdateAssetDto mintAssetDto = new MintOrUpdateAssetDto();
+                        mintAssetDto.setOrgId(orgId);
+                        mintAssetDto.setAssetId(assetId);
+                        mintAssetDto.setShortName(assetCode.getShortName());
+                        model.addAttribute("mintAssetDto", mintAssetDto);
+                }
                 return "user/mintAsset";
         }
 
@@ -166,19 +169,23 @@ public class HomeController {
                         }
                 }
                 AssetCodeInventoryEntry assetCodeInventoryEntry = null;
-                for (AssetCodeInventoryEntry entry : assetCode.getAssetCodeInventoryEntry()) {
-                        if (entry.getIouIdentifier().equals(inventoryId)) {
-                                assetCodeInventoryEntry = entry;
-                                break;
+                if (assetCode != null) {
+                        for (AssetCodeInventoryEntry entry : assetCode.getAssetCodeInventoryEntry()) {
+                                if (entry.getIouIdentifier().equals(inventoryId)) {
+                                        assetCodeInventoryEntry = entry;
+                                        break;
+                                }
+                        }
+                        if (assetCodeInventoryEntry != null) {
+                                MintOrUpdateAssetDto updateAssetDto = new MintOrUpdateAssetDto();
+                                updateAssetDto.setOrgId(orgId);
+                                updateAssetDto.setAssetId(assetId);
+                                updateAssetDto.setIouIdentifier(assetCodeInventoryEntry.getIouIdentifier());
+                                updateAssetDto.setShortName(assetCode.getShortName());
+                                updateAssetDto.setContractId(assetCodeInventoryEntry.getContractId());
+                                model.addAttribute("updateAssetDto", updateAssetDto);
                         }
                 }
-                MintOrUpdateAssetDto updateAssetDto = new MintOrUpdateAssetDto();
-                updateAssetDto.setOrgId(orgId);
-                updateAssetDto.setAssetId(assetId);
-                updateAssetDto.setIouIdentifier(assetCodeInventoryEntry.getIouIdentifier());
-                updateAssetDto.setShortName(assetCode.getShortName());
-                updateAssetDto.setContractId(assetCodeInventoryEntry.getContractId());
-                model.addAttribute("updateAssetDto", updateAssetDto);
                 return "user/updateAsset";
         }
 
@@ -199,7 +206,8 @@ public class HomeController {
                                 toplContext,
                                 10000,
                                 () -> java.util.UUID.randomUUID().toString(),
-                                (x, y) -> !(x.sendStatus instanceof Confirmed));
+                                (x, y) -> !(x.sendStatus instanceof Confirmed),
+                                x -> true);
                 transactions.forEachWhile(signedMintingRequestProcessor::processTransaction);
                 Command exerciseCommand = Command.newBuilder().setExerciseByKey(
                                 ExerciseByKeyCommand.newBuilder()
@@ -324,25 +332,32 @@ public class HomeController {
                         }
                 }
                 AssetCodeInventoryEntry assetCodeInventoryEntry = null;
-                for (AssetCodeInventoryEntry entry : assetCode.getAssetCodeInventoryEntry()) {
-                        if (entry.getIouIdentifier().equals(updateAssetDto.getIouIdentifier())) {
-                                assetCodeInventoryEntry = entry;
-                                break;
+                if (assetCode != null) {
+                        for (AssetCodeInventoryEntry entry : assetCode.getAssetCodeInventoryEntry()) {
+                                if (entry.getIouIdentifier().equals(updateAssetDto.getIouIdentifier())) {
+                                        assetCodeInventoryEntry = entry;
+                                        break;
+                                }
                         }
+
                 }
                 organizationRepository.save(org);
-                String newMetadata = updateAssetDto.getMetadata();
-                if (newMetadata.trim().isEmpty()) {
-                        newMetadata = assetCodeInventoryEntry.getMetadata();
+                if (assetCodeInventoryEntry != null) {
+                        String newMetadata = updateAssetDto.getMetadata();
+                        if (newMetadata.trim().isEmpty()) {
+                                newMetadata = assetCodeInventoryEntry.getMetadata();
+                        }
+                        final String iouIdentifier = assetCodeInventoryEntry.getIouIdentifier();
+                        SignedAssetTransferRequestProcessor signedTransferRequestProcessor = new SignedAssetTransferRequestProcessor(
+                                        damlAppContext,
+                                        toplContext,
+                                        10000,
+                                        () -> iouIdentifier,
+                                        (x, y) -> !(x.sendStatus instanceof Confirmed),
+                                        x -> true);
+                        transactions.forEachWhile(signedTransferRequestProcessor::processTransaction);
+
                 }
-                final String iouIdentifier = assetCodeInventoryEntry.getIouIdentifier();
-                SignedAssetTransferRequestProcessor signedTransferRequestProcessor = new SignedAssetTransferRequestProcessor(
-                                damlAppContext,
-                                toplContext,
-                                10000,
-                                () -> iouIdentifier,
-                                (x, y) -> !(x.sendStatus instanceof Confirmed));
-                transactions.forEachWhile(signedTransferRequestProcessor::processTransaction);
                 Command exerciseCommand = Command.newBuilder().setExercise(
                                 ExerciseCommand.newBuilder()
                                                 .setTemplateId(assetIouIdentifier.build())
@@ -513,17 +528,23 @@ public class HomeController {
                                                                         assetIou.iouIdentifier));
 
                                         if (someAssetCodeInventoryEntry.isEmpty()) {
-                                                AssetCodeInventoryEntry assetCodeInventoryEntry = new AssetCodeInventoryEntry();
-                                                assetCodeInventoryEntry.setIouIdentifier(assetIou.iouIdentifier);
-                                                assetCodeInventoryEntry.setBoxNonce(assetIou.boxNonce);
-                                                assetCodeInventoryEntry
-                                                                .setMetadata(assetIou.someMetadata
-                                                                                .orElse("No metadata"));
-                                                assetCodeInventoryEntry.setQuantity(assetIou.quantity);
-                                                assetCodeInventoryEntry.setShortName(assetIou.assetCode.shortName);
-                                                assetCodeInventoryEntry.setContractId(assetIouContract.contractId);
-                                                theCode.getAssetCodeInventoryEntry().add(assetCodeInventoryEntry);
-                                                session.save(theOrg);
+                                                if (theCode != null) {
+                                                        AssetCodeInventoryEntry assetCodeInventoryEntry = new AssetCodeInventoryEntry();
+                                                        assetCodeInventoryEntry
+                                                                        .setIouIdentifier(assetIou.iouIdentifier);
+                                                        assetCodeInventoryEntry.setBoxNonce(assetIou.boxNonce);
+                                                        assetCodeInventoryEntry
+                                                                        .setMetadata(assetIou.someMetadata
+                                                                                        .orElse("No metadata"));
+                                                        assetCodeInventoryEntry.setQuantity(assetIou.quantity);
+                                                        assetCodeInventoryEntry
+                                                                        .setShortName(assetIou.assetCode.shortName);
+                                                        assetCodeInventoryEntry
+                                                                        .setContractId(assetIouContract.contractId);
+                                                        theCode.getAssetCodeInventoryEntry()
+                                                                        .add(assetCodeInventoryEntry);
+                                                        session.save(theOrg);
+                                                }
                                         } else {
                                                 AssetCodeInventoryEntry assetCodeInventoryEntry = someAssetCodeInventoryEntry
                                                                 .get();
@@ -539,7 +560,7 @@ public class HomeController {
                                         session.getTransaction().commit();
                                         session.close();
                                         return true;
-                                });
+                                }, t -> true);
                 transactions.forEach(assetIouProcessor::processTransaction);
                 RedirectView redirectView = new RedirectView();
                 redirectView.setUrl("/home/organization/" + addAssetCodeDto.getOrgId() + "/assets");

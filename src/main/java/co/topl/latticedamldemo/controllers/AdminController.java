@@ -2,7 +2,6 @@ package co.topl.latticedamldemo.controllers;
 
 import java.security.Principal;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -31,9 +30,6 @@ import com.daml.ledger.api.v1.ValueOuterClass.Value;
 import com.daml.ledger.api.v1.admin.PartyManagementServiceGrpc.PartyManagementServiceBlockingStub;
 import com.daml.ledger.api.v1.admin.PartyManagementServiceOuterClass.AllocatePartyRequest;
 import com.daml.ledger.api.v1.admin.PartyManagementServiceOuterClass.AllocatePartyResponse;
-import com.daml.ledger.javaapi.data.FiltersByParty;
-import com.daml.ledger.javaapi.data.LedgerOffset;
-import com.daml.ledger.javaapi.data.NoFilter;
 import com.daml.ledger.javaapi.data.Transaction;
 import com.daml.ledger.rxjava.DamlLedgerClient;
 
@@ -123,7 +119,7 @@ public class AdminController {
                                                 party));
                 DamlAppContext damlAppContext = new DamlAppContext(demoConfiguration.getAppId(), party, client);
                 MembershipOfferProcessor membershipOfferProcessor = new MembershipOfferProcessor(damlAppContext,
-                                toplContext, (x, y) -> true);
+                                toplContext, (x, y) -> true, x -> true);
                 transactions.forEach(membershipOfferProcessor::processTransaction);
                 RedirectView redirectView = new RedirectView();
                 redirectView.setUrl("/admin/users");
