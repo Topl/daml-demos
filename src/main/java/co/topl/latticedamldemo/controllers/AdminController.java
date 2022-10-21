@@ -2,7 +2,6 @@ package co.topl.latticedamldemo.controllers;
 
 import java.security.Principal;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -31,16 +30,13 @@ import com.daml.ledger.api.v1.ValueOuterClass.Value;
 import com.daml.ledger.api.v1.admin.PartyManagementServiceGrpc.PartyManagementServiceBlockingStub;
 import com.daml.ledger.api.v1.admin.PartyManagementServiceOuterClass.AllocatePartyRequest;
 import com.daml.ledger.api.v1.admin.PartyManagementServiceOuterClass.AllocatePartyResponse;
-import com.daml.ledger.javaapi.data.FiltersByParty;
-import com.daml.ledger.javaapi.data.LedgerOffset;
-import com.daml.ledger.javaapi.data.NoFilter;
 import com.daml.ledger.javaapi.data.Transaction;
 import com.daml.ledger.rxjava.DamlLedgerClient;
 
 import co.topl.daml.DamlAppContext;
 import co.topl.daml.ToplContext;
 import co.topl.daml.operator.MembershipOfferProcessor;
-import co.topl.latticedamldemo.LatticeDamlDemoApplication;
+import co.topl.latticedamldemo.configuration.DemoConfiguration;
 import co.topl.latticedamldemo.dtos.AddMemberToOrgDto;
 import co.topl.latticedamldemo.dtos.AddOrganizationDto;
 import co.topl.latticedamldemo.dtos.AddUserDto;
@@ -54,211 +50,258 @@ import io.reactivex.Flowable;
 @RequestMapping("/admin")
 public class AdminController {
 
-    @Autowired
-    DamlLedgerClient client;
+        @Autowired
+        DemoConfiguration demoConfiguration;
 
-    @Autowired
-    private MembersRepository memberRepository;
+        @Autowired
+        DamlLedgerClient client;
 
-    @Autowired
-    private OrganizationRepository organizationRepository;
+        @Autowired
+        private MembersRepository memberRepository;
 
-    @Autowired
-    PasswordEncoder passwordEncoder;
+        @Autowired
+        private OrganizationRepository organizationRepository;
 
-    @Autowired
-    ToplContext toplContext;
+        @Autowired
+        PasswordEncoder passwordEncoder;
 
-    @Autowired
-    PartyManagementServiceBlockingStub partyManagementService;
+        @Autowired
+        ToplContext toplContext;
 
-    @Autowired
-    CommandSubmissionServiceBlockingStub commandSubmissionService;
+        @Autowired
+        PartyManagementServiceBlockingStub partyManagementService;
 
-    @GetMapping
-    public String getMainAdminPage(Model model) {
-        return "admin/admin";
-    }
+        @Autowired
+        CommandSubmissionServiceBlockingStub commandSubmissionService;
 
-    @GetMapping("/users")
-    public String getUserAdminPage(Model model) {
-        List<Member> members = new ArrayList<>();
-        for (Member m : memberRepository.findAll()) {
-            members.add(m);
+        @Autowired
+        Flowable<Transaction> transactions;
+
+        @GetMapping
+        public String getMainAdminPage(Model model) {
+                return "admin/admin";
         }
-        model.addAttribute("members", members);
-        return "admin/users";
-    }
 
-    @GetMapping("/addUser")
-    public String getAddUserPage(Model model) {
-        model.addAttribute("addUserDto", new AddUserDto());
-        return "admin/addUser";
-    }
-
-    @PostMapping("/addUser")
-    public RedirectView getAddUserSubmit(@ModelAttribute AddUserDto addUserDto, Model model) {
-        AllocatePartyResponse getPartyResponse = partyManagementService
-                .allocateParty(AllocatePartyRequest.newBuilder().setDisplayName(addUserDto.getUserName())
-                        .setPartyIdHint(addUserDto.getUserName()).build());
-        String thePassword = passwordEncoder.encode(addUserDto.getPassword());
-        String party = getPartyResponse.getPartyDetails().getParty();
-        memberRepository.save(
-                new Member(
-                        addUserDto.getUserName(),
-                        thePassword,
-                        "USER",
-                        party));
-        DamlAppContext damlAppContext = new DamlAppContext(LatticeDamlDemoApplication.APP_ID, party, client);
-        Flowable<Transaction> transactions = client.getTransactionsClient().getTransactions(
-                LedgerOffset.LedgerEnd.getInstance(),
-                new FiltersByParty(Collections.singletonMap(party, NoFilter.instance)),
-                true);
-        MembershipOfferProcessor membershipOfferProcessor = new MembershipOfferProcessor(damlAppContext, toplContext);
-        transactions.forEach(membershipOfferProcessor::processTransaction);
-        RedirectView redirectView = new RedirectView();
-        redirectView.setUrl("/admin/users");
-        return redirectView;
-    }
-
-    @GetMapping("/organizations")
-    public String getOrgsAdminPage(Model model) {
-        List<Organization> organizations = new ArrayList<>();
-        for (Organization o : organizationRepository.findAll()) {
-            organizations.add(o);
+        @GetMapping("/users")
+        public String getUserAdminPage(Model model) {
+                List<Member> members = new ArrayList<>();
+                for (Member m : memberRepository.findAll()) {
+                        members.add(m);
+                }
+                model.addAttribute("members", members);
+                return "admin/users";
         }
-        model.addAttribute("organizations", organizations);
-        return "admin/organizations";
-    }
 
-    @GetMapping("/addOrganization")
-    public String getAddOrganizationPage(Model model) {
-        model.addAttribute("addOrganizationDto", new AddOrganizationDto());
-        return "admin/addOrganization";
-    }
-
-    @PostMapping("/addOrganization")
-    public RedirectView getAddOrganizationSubmit(@ModelAttribute AddOrganizationDto addOrganizationDto, Model model) {
-
-        Builder organizationIdentifier = Identifier.newBuilder()
-                .setPackageId(co.topl.daml.api.model.topl.organization.Organization.TEMPLATE_ID.getPackageId())
-                .setEntityName(co.topl.daml.api.model.topl.organization.Organization.TEMPLATE_ID.getEntityName())
-                .setModuleName(co.topl.daml.api.model.topl.organization.Organization.TEMPLATE_ID.getModuleName());
-
-        Optional<Member> someOperator = memberRepository.findById(LatticeDamlDemoApplication.OPERATOR_ID);
-
-        Command createCommand = Command.newBuilder().setCreate(
-                CreateCommand.newBuilder()
-                        .setTemplateId(organizationIdentifier.build())
-                        .setCreateArguments(
-                                Record.newBuilder()
-                                        .setRecordId(organizationIdentifier)
-                                        .addFields(RecordField.newBuilder().setLabel("orgName")
-                                                .setValue(Value.newBuilder().setText(addOrganizationDto.getOrgName())))
-                                        .addFields(RecordField.newBuilder().setLabel("address")
-                                                .setValue(Value.newBuilder()
-                                                        .setText(LatticeDamlDemoApplication.OPERATOR_ADDRESS)))
-                                        .addFields(RecordField.newBuilder().setLabel("operator")
-                                                .setValue(Value.newBuilder()
-                                                        .setParty(someOperator.get().getPartyIdentifier())))
-                                        .addFields(RecordField.newBuilder().setLabel("wouldBeMembers")
-                                                .setValue(Value.newBuilder()
-                                                        .setList(com.daml.ledger.api.v1.ValueOuterClass.List
-                                                                .newBuilder().build())))
-                                        .addFields(RecordField.newBuilder().setLabel("members")
-                                                .setValue(Value.newBuilder()
-                                                        .setList(com.daml.ledger.api.v1.ValueOuterClass.List
-                                                                .newBuilder().build())))
-                                        .addFields(RecordField.newBuilder().setLabel("assetCodes")
-                                                .setValue(Value.newBuilder()
-                                                        .setList(com.daml.ledger.api.v1.ValueOuterClass.List
-                                                                .newBuilder().build())))
-                                        .build()))
-                .build();
-
-        SubmitRequest commandSubmitRequest = SubmitRequest.newBuilder()
-                .setCommands(
-                        Commands.newBuilder()
-                                .setCommandId(UUID.randomUUID().toString())
-                                .setParty(someOperator.get().getPartyIdentifier())
-                                .setApplicationId(LatticeDamlDemoApplication.APP_ID)
-                                .addCommands(createCommand)
-                                .build())
-                .build();
-
-        commandSubmissionService.submit(commandSubmitRequest);
-
-        organizationRepository.save(
-                new Organization(
-                        addOrganizationDto.getOrgName()));
-        RedirectView redirectView = new RedirectView();
-        redirectView.setUrl("/admin/organizations");
-        return redirectView;
-    }
-
-    @GetMapping("/addMemberToOrg")
-    public String getAddMemberToOrgPage(Model model) {
-        model.addAttribute("addMemberToOrgDto", new AddMemberToOrgDto());
-        List<Member> members = new ArrayList<>();
-        for (Member m : memberRepository.findAll()) {
-            members.add(m);
+        @GetMapping("/addUser")
+        public String getAddUserPage(Model model) {
+                model.addAttribute("addUserDto", new AddUserDto());
+                return "admin/addUser";
         }
-        model.addAttribute("members", members);
-        List<Organization> organizations = new ArrayList<>();
-        for (Organization o : organizationRepository.findAll()) {
-            organizations.add(o);
+
+        @GetMapping("/accessDenied")
+        public String getAccessDenied(Model model) {
+                return "admin/accessDenied";
         }
-        model.addAttribute("organizations", organizations);
-        return "admin/addMemberToOrg";
-    }
 
-    @PostMapping("/addMemberToOrg")
-    public RedirectView submitAddMemberToOrgPage(@ModelAttribute AddMemberToOrgDto addMemberToOrgDto,
-            Principal principal, Model model) {
+        @PostMapping("/addUser")
+        public RedirectView getAddUserSubmit(@ModelAttribute AddUserDto addUserDto, Model model) {
+                AllocatePartyResponse getPartyResponse = partyManagementService
+                                .allocateParty(AllocatePartyRequest.newBuilder()
+                                                .setDisplayName(addUserDto.getUserName())
+                                                .setPartyIdHint(addUserDto.getUserName()).build());
+                String thePassword = passwordEncoder.encode(addUserDto.getPassword());
+                String party = getPartyResponse.getPartyDetails().getParty();
+                memberRepository.save(
+                                new Member(
+                                                addUserDto.getUserName(),
+                                                thePassword,
+                                                "USER",
+                                                party));
+                DamlAppContext damlAppContext = new DamlAppContext(demoConfiguration.getAppId(), party, client);
+                MembershipOfferProcessor membershipOfferProcessor = new MembershipOfferProcessor(damlAppContext,
+                                toplContext, (x, y) -> true, x -> true);
+                transactions.forEach(membershipOfferProcessor::processTransaction);
+                RedirectView redirectView = new RedirectView();
+                redirectView.setUrl("/admin/users");
+                return redirectView;
+        }
 
-        Builder organizationIdentifier = Identifier.newBuilder()
-                .setPackageId(co.topl.daml.api.model.topl.organization.Organization.TEMPLATE_ID.getPackageId())
-                .setEntityName(co.topl.daml.api.model.topl.organization.Organization.TEMPLATE_ID.getEntityName())
-                .setModuleName(co.topl.daml.api.model.topl.organization.Organization.TEMPLATE_ID.getModuleName());
+        @GetMapping("/organizations")
+        public String getOrgsAdminPage(Model model) {
+                List<Organization> organizations = new ArrayList<>();
+                for (Organization o : organizationRepository.findAll()) {
+                        organizations.add(o);
+                }
+                model.addAttribute("organizations", organizations);
+                return "admin/organizations";
+        }
 
-        Optional<Member> someOperator = memberRepository.findById(LatticeDamlDemoApplication.OPERATOR_ID);
-        Optional<Member> someUser = memberRepository.findById(addMemberToOrgDto.getMember());
+        @GetMapping("/addOrganization")
+        public String getAddOrganizationPage(Model model) {
+                model.addAttribute("addOrganizationDto", new AddOrganizationDto());
+                return "admin/addOrganization";
+        }
 
-        Command exerciseCommand = Command.newBuilder().setExerciseByKey(
-                ExerciseByKeyCommand.newBuilder()
-                        .setTemplateId(organizationIdentifier.build())
-                        .setContractKey(Value.newBuilder()
-                                .setRecord(Record.newBuilder()
-                                        .addFields(0, RecordField.newBuilder().setLabel("_1").setValue(
-                                                Value.newBuilder().setParty(someOperator.get()
-                                                        .getPartyIdentifier())))
-                                        .addFields(1, RecordField.newBuilder().setLabel("_2").setValue(
-                                                Value.newBuilder().setText(addMemberToOrgDto.getOrgName())))))
-                        .setChoice("Organization_InviteMember")
-                        .setChoiceArgument(
-                                Value.newBuilder()
-                                        .setRecord(Record
-                                                .newBuilder().addFields(RecordField.newBuilder().setLabel("invitee")
-                                                        .setValue(Value.newBuilder()
-                                                                .setParty(someUser.get().getPartyIdentifier()))))
-                                        .build()))
-                .build();
+        @PostMapping("/addOrganization")
+        public RedirectView getAddOrganizationSubmit(@ModelAttribute AddOrganizationDto addOrganizationDto,
+                        Model model) {
 
-        SubmitRequest commandSubmitRequest = SubmitRequest.newBuilder()
-                .setCommands(
-                        Commands.newBuilder()
-                                .setCommandId(UUID.randomUUID().toString())
-                                .setParty(someOperator.get().getPartyIdentifier())
-                                .setApplicationId(LatticeDamlDemoApplication.APP_ID)
-                                .addCommands(exerciseCommand)
-                                .build())
-                .build();
+                Builder organizationIdentifier = Identifier.newBuilder()
+                                .setPackageId(co.topl.daml.api.model.topl.organization.Organization.TEMPLATE_ID
+                                                .getPackageId())
+                                .setEntityName(co.topl.daml.api.model.topl.organization.Organization.TEMPLATE_ID
+                                                .getEntityName())
+                                .setModuleName(co.topl.daml.api.model.topl.organization.Organization.TEMPLATE_ID
+                                                .getModuleName());
 
-        commandSubmissionService.submit(commandSubmitRequest);
+                Optional<Member> someOperator = memberRepository.findById(demoConfiguration.getOperatorId());
+                Organization org = new Organization(addOrganizationDto.getOrgName());
+                org = organizationRepository.save(org);
 
-        RedirectView redirectView = new RedirectView();
-        redirectView.setUrl("/admin/organizations");
-        return redirectView;
-    }
+                Command createCommand = Command.newBuilder().setCreate(
+                                CreateCommand.newBuilder()
+                                                .setTemplateId(organizationIdentifier.build())
+                                                .setCreateArguments(
+                                                                Record.newBuilder()
+                                                                                .setRecordId(organizationIdentifier)
+                                                                                .addFields(RecordField.newBuilder()
+                                                                                                .setLabel("orgId")
+                                                                                                .setValue(Value.newBuilder()
+                                                                                                                .setText(org.getId()
+                                                                                                                                .toString())))
+                                                                                .addFields(RecordField.newBuilder()
+                                                                                                .setLabel("orgName")
+                                                                                                .setValue(Value.newBuilder()
+                                                                                                                .setText(addOrganizationDto
+                                                                                                                                .getOrgName())))
+                                                                                .addFields(RecordField.newBuilder()
+                                                                                                .setLabel("address")
+                                                                                                .setValue(Value.newBuilder()
+                                                                                                                .setText(demoConfiguration
+                                                                                                                                .getOperatorAddress())))
+                                                                                .addFields(RecordField.newBuilder()
+                                                                                                .setLabel("operator")
+                                                                                                .setValue(Value.newBuilder()
+                                                                                                                .setParty(someOperator
+                                                                                                                                .get()
+                                                                                                                                .getPartyIdentifier())))
+                                                                                .addFields(RecordField.newBuilder()
+                                                                                                .setLabel("wouldBeMembers")
+                                                                                                .setValue(Value.newBuilder()
+                                                                                                                .setList(com.daml.ledger.api.v1.ValueOuterClass.List
+                                                                                                                                .newBuilder()
+                                                                                                                                .build())))
+                                                                                .addFields(RecordField.newBuilder()
+                                                                                                .setLabel("members")
+                                                                                                .setValue(Value.newBuilder()
+                                                                                                                .setList(com.daml.ledger.api.v1.ValueOuterClass.List
+                                                                                                                                .newBuilder()
+                                                                                                                                .build())))
+                                                                                .addFields(RecordField.newBuilder()
+                                                                                                .setLabel("assetCodesAndIous")
+                                                                                                .setValue(Value.newBuilder()
+                                                                                                                .setList(com.daml.ledger.api.v1.ValueOuterClass.List
+                                                                                                                                .newBuilder()
+                                                                                                                                .build())))
+                                                                                .build()))
+                                .build();
+
+                SubmitRequest commandSubmitRequest = SubmitRequest.newBuilder()
+                                .setCommands(
+                                                Commands.newBuilder()
+                                                                .setCommandId(UUID.randomUUID().toString())
+                                                                .setParty(someOperator.get().getPartyIdentifier())
+                                                                .setApplicationId(demoConfiguration.getAppId())
+                                                                .addCommands(createCommand)
+                                                                .build())
+                                .build();
+
+                commandSubmissionService.submit(commandSubmitRequest);
+
+                RedirectView redirectView = new RedirectView();
+                redirectView.setUrl("/admin/organizations");
+                return redirectView;
+        }
+
+        @GetMapping("/addMemberToOrg")
+        public String getAddMemberToOrgPage(Model model) {
+                model.addAttribute("addMemberToOrgDto", new AddMemberToOrgDto());
+                List<Member> members = new ArrayList<>();
+                for (Member m : memberRepository.findAll()) {
+                        members.add(m);
+                }
+                model.addAttribute("members", members);
+                List<Organization> organizations = new ArrayList<>();
+                for (Organization o : organizationRepository.findAll()) {
+                        organizations.add(o);
+                }
+                model.addAttribute("organizations", organizations);
+                return "admin/addMemberToOrg";
+        }
+
+        @PostMapping("/addMemberToOrg")
+        public RedirectView submitAddMemberToOrgPage(@ModelAttribute AddMemberToOrgDto addMemberToOrgDto,
+                        Principal principal, Model model) {
+
+                Builder organizationIdentifier = Identifier.newBuilder()
+                                .setPackageId(co.topl.daml.api.model.topl.organization.Organization.TEMPLATE_ID
+                                                .getPackageId())
+                                .setEntityName(co.topl.daml.api.model.topl.organization.Organization.TEMPLATE_ID
+                                                .getEntityName())
+                                .setModuleName(co.topl.daml.api.model.topl.organization.Organization.TEMPLATE_ID
+                                                .getModuleName());
+
+                Optional<Member> someOperator = memberRepository.findById(demoConfiguration.getOperatorId());
+                Optional<Member> someUser = memberRepository.findById(addMemberToOrgDto.getMember());
+
+                Command exerciseCommand = Command.newBuilder().setExerciseByKey(
+                                ExerciseByKeyCommand.newBuilder()
+                                                .setTemplateId(organizationIdentifier.build())
+                                                .setContractKey(Value.newBuilder()
+                                                                .setRecord(Record.newBuilder()
+                                                                                .addFields(0, RecordField.newBuilder()
+                                                                                                .setLabel("_1")
+                                                                                                .setValue(
+                                                                                                                Value.newBuilder()
+                                                                                                                                .setParty(someOperator
+                                                                                                                                                .get()
+                                                                                                                                                .getPartyIdentifier())))
+                                                                                .addFields(1, RecordField.newBuilder()
+                                                                                                .setLabel("_2")
+                                                                                                .setValue(
+                                                                                                                Value.newBuilder()
+                                                                                                                                .setText(addMemberToOrgDto
+                                                                                                                                                .getOrgId())))))
+                                                .setChoice("Organization_InviteMember")
+                                                .setChoiceArgument(
+                                                                Value.newBuilder()
+                                                                                .setRecord(Record
+                                                                                                .newBuilder()
+                                                                                                .addFields(RecordField
+                                                                                                                .newBuilder()
+                                                                                                                .setLabel("invitee")
+                                                                                                                .setValue(Value.newBuilder()
+                                                                                                                                .setParty(someUser
+                                                                                                                                                .get()
+                                                                                                                                                .getPartyIdentifier()))))
+                                                                                .build()))
+                                .build();
+
+                SubmitRequest commandSubmitRequest = SubmitRequest.newBuilder()
+                                .setCommands(
+                                                Commands.newBuilder()
+                                                                .setCommandId(UUID.randomUUID().toString())
+                                                                .setParty(someOperator.get().getPartyIdentifier())
+                                                                .setApplicationId(demoConfiguration.getAppId())
+                                                                .addCommands(exerciseCommand)
+                                                                .build())
+                                .build();
+
+                commandSubmissionService.submit(commandSubmitRequest);
+
+                RedirectView redirectView = new RedirectView();
+                redirectView.setUrl("/admin/organizations");
+                return redirectView;
+        }
 
 }

@@ -17,27 +17,12 @@
 </head>
 
 <body>
-    <nav th:replace="fragments/navigationBars.html :: usernavbar"></nav>
+    <nav th:replace="fragments/navigationBars.html :: adminnavbar"></nav>
     <div class="container">
         <div class="row">
-            <h1>Manage organizations</h1>
+            <h1>You are not allowed to see this page!</h1>
+            <p>Please use the menu to navigate.</p>
         </div>
-        <table class="table"
-               aria-labelledby="List of organizations">
-            <thead>
-                <tr>
-                    <th scope="col">Organization Name</th>
-                    <th scope="col">Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr th:each="organization:${organizations}">
-                    <td th:text="${organization.orgName}"></td>
-                    <td> <a th:href="@{/home/organization/{orgId}/assets(orgId=${organization.id})}">See
-                            assets</a></td>
-                </tr>
-            </tbody>
-        </table>
     </div>
 </body>
 

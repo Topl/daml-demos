@@ -52,6 +52,11 @@
                                     type="submit"
                                     class="btn btn-primary">Login</button>
                         </form>
+                        <div class="alert alert-danger"
+                             role="alert"
+                             th:if="${param.error != null}">
+                            Error in username or password.
+                        </div>
                     </div>
                 </div>
             </div>

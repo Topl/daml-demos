@@ -39,6 +39,7 @@ public class SecurityConfiguration {
                                                 .antMatchers("/admin/**").hasAuthority("ADMIN")
                                                 .anyRequest()
                                                 .denyAll())
+                                .exceptionHandling().accessDeniedHandler(new CustomAccessDeniedHandler()).and()
                                 .build();
         }
 

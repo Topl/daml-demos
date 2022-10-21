@@ -7,6 +7,6 @@ public class AddAssetCodeDto {
 
     private String shortName;
 
-    private String orgName;
+    private Long orgId;
 
 }
