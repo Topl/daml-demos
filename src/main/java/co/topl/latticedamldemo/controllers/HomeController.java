@@ -205,6 +205,7 @@ public class HomeController {
                                 damlAppContext,
                                 toplContext,
                                 10000,
+                                5,
                                 () -> java.util.UUID.randomUUID().toString(),
                                 (x, y) -> !(x.sendStatus instanceof Confirmed),
                                 x -> true);
@@ -352,6 +353,7 @@ public class HomeController {
                                         damlAppContext,
                                         toplContext,
                                         10000,
+                                        5,
                                         () -> iouIdentifier,
                                         (x, y) -> !(x.sendStatus instanceof Confirmed),
                                         x -> true);
