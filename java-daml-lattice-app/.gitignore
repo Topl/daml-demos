@@ -33,3 +33,5 @@ build/
 .vscode/
 .mvn/
 keyfile.json
+*.gz
+.bloop
