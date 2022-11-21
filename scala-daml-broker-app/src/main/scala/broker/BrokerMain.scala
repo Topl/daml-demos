@@ -27,14 +27,18 @@ import co.topl.daml.api.model.topl.asset.UnsignedAssetMinting
 import co.topl.daml.assets.processors.AssetTransferRequestProcessor
 import co.topl.daml.assets.processors.SignedAssetTransferRequestProcessor
 
-object BrokerMain extends IOApp {
+object BrokerMain
+    extends IOApp
+    with PolyProcessorRegistrationModule
+    with AssetTransferProcessorRegistrationModule
+    with AssetMintingProcessorRegistrationModule {
 
   val EXPECTED_ARG_COUNT = 4;
   val OPERATOR_USER = "public";
   val APP_ID = "toplBrokerApp";
 
   override def run(args: List[String]): IO[ExitCode] =
-    for {
+    (for {
       tuple <- getArgs(args)
       (host, port, keyfile, password) = tuple
       client <- createClient(host, port)
@@ -51,209 +55,22 @@ object BrokerMain extends IOApp {
         )
       )
       transactions <- getTransactions(client, operatorParty)
-      _ <- registerTransferProcessor(transactions, damlAppContext, toplContext)
-      _ <- registerSignedTransferProcessor(
-        transactions,
-        damlAppContext,
-        toplContext
-      )
-      _ <- registerUnsignedTransferProcessor(
-        transactions,
-        damlAppContext,
-        toplContext,
-        keyfile,
-        password
-      )
-      _ <- registerUnsignedMintingProcessor(
-        transactions,
-        damlAppContext,
-        toplContext,
-        keyfile,
-        password
-      )
-      _ <- registerMintingRequestProcessor(
-        transactions,
-        damlAppContext,
-        toplContext
-      )
-      _ <- registerAssetTransferRequestProcessor(
-        transactions,
-        damlAppContext,
-        toplContext
-      )
-      _ <- registerSignedMintingRequestProcessor(
-        transactions,
-        damlAppContext,
-        toplContext
-      )
-      _ <- registerSignedAssetTransferRequestProcessor(
-        transactions,
-        damlAppContext,
-        toplContext
-      )
-      _ <- IO.never[Unit]
-    } yield ExitCode.Success
-
-  def registerAssetTransferRequestProcessor(
-      transactions: Flowable[Transaction],
-      damlAppContext: DamlAppContext,
-      toplContext: ToplContext
-  ) =
-    for {
-      transferProcessor <- IO(
-        new AssetTransferRequestProcessor(
-          damlAppContext,
-          toplContext,
-          3000,
-          (x, y) => true,
-          t => true
-        )
-      )
-      _ <- IO(transactions.forEach(transferProcessor.processTransaction))
-    } yield ()
-
-  def registerMintingRequestProcessor(
-      transactions: Flowable[Transaction],
-      damlAppContext: DamlAppContext,
-      toplContext: ToplContext
-  ) =
-    for {
-      transferProcessor <- IO(
-        new AssetMintingRequestProcessor(
-          damlAppContext,
-          toplContext,
-          3000,
-          (x, y) => true,
-          t => true
-        )
-      )
-      _ <- IO(transactions.forEach(transferProcessor.processTransaction))
-    } yield ()
-
-  def registerSignedMintingRequestProcessor(
-      transactions: Flowable[Transaction],
-      damlAppContext: DamlAppContext,
-      toplContext: ToplContext
-  ) = {
-    var i = 0
-    for {
-      transferProcessor <- IO(
-        new SignedMintingRequestProcessor(
-          damlAppContext,
-          toplContext,
-          3000,
-          1,
-          () => {
-            i = i + 1
-            i.toString()
-          },
-          (x, y) => true,
-          t => true
-        )
-      )
-      _ <- IO(transactions.forEach(transferProcessor.processTransaction))
-    } yield ()
-  }
-  def registerSignedAssetTransferRequestProcessor(
-      transactions: Flowable[Transaction],
-      damlAppContext: DamlAppContext,
-      toplContext: ToplContext
-  ) = {
-    var i = 0
-    for {
-      transferProcessor <- IO(
-        new SignedAssetTransferRequestProcessor(
-          damlAppContext,
-          toplContext,
-          3000,
-          1,
-          () => {
-            i = i + 1
-            i.toString()
-          },
-          (x, y) => true,
-          t => true
-        )
-      )
-      _ <- IO(transactions.forEach(transferProcessor.processTransaction))
-    } yield ()
-  }
-
-  def registerTransferProcessor(
-      transactions: Flowable[Transaction],
-      damlAppContext: DamlAppContext,
-      toplContext: ToplContext
-  ) =
-    for {
-      transferProcessor <- IO(
-        new TransferRequestProcessor(
-          damlAppContext,
-          toplContext,
-          3000,
-          (x, y) => true,
-          t => true
-        )
-      )
-      _ <- IO(transactions.forEach(transferProcessor.processTransaction))
-    } yield ()
-
-  def registerUnsignedMintingProcessor(
-      transactions: Flowable[Transaction],
-      damlAppContext: DamlAppContext,
-      toplContext: ToplContext,
-      keyfile: String,
-      password: String
-  ) =
-    for {
-      transferProcessor <- IO(
-        new UnsignedMintingRequestProcessor(
-          damlAppContext,
-          toplContext,
-          keyfile,
-          password,
-          (x: UnsignedAssetMinting, y: UnsignedAssetMinting.ContractId) => true,
-          (t: Throwable) => true
-        )
-      )
-      _ <- IO(transactions.forEach(transferProcessor.processTransaction))
-    } yield ()
-  def registerUnsignedTransferProcessor(
-      transactions: Flowable[Transaction],
-      damlAppContext: DamlAppContext,
-      toplContext: ToplContext,
-      keyfile: String,
-      password: String
-  ) =
-    for {
-      transferProcessor <- IO(
-        new UnsignedTransferProcessor(
-          damlAppContext,
-          toplContext,
-          keyfile,
-          password
-        )
-      )
-      _ <- IO(transactions.forEach(transferProcessor.processTransaction))
-    } yield ()
-
-  def registerSignedTransferProcessor(
-      transactions: Flowable[Transaction],
-      damlAppContext: DamlAppContext,
-      toplContext: ToplContext
-  ) =
-    for {
-      transferProcessor <- IO(
-        new SignedTransferProcessor(
-          damlAppContext,
-          toplContext,
-          3000,
-          1,
-          (x, y) => true,
-          t => true
-        )
-      )
-      _ <- IO(transactions.forEach(transferProcessor.processTransaction))
-    } yield ()
+    } yield {
+      implicit val damlAppContextImpl = damlAppContext
+      implicit val toplContextImpl = toplContext
+      implicit val transactionsImpl = transactions
+      for {
+        _ <- registerTransferProcessor()
+        _ <- registerSignedTransferProcessor()
+        _ <- registerUnsignedTransferProcessor(keyfile, password)
+        _ <- registerUnsignedMintingProcessor(keyfile, password)
+        _ <- registerMintingRequestProcessor()
+        _ <- registerAssetTransferRequestProcessor()
+        _ <- registerSignedMintingRequestProcessor()
+        _ <- registerSignedAssetTransferRequestProcessor()
+        _ <- IO.never[Unit]
+      } yield ExitCode.Success
+    }).flatten
 
   def getTransactions(client: DamlLedgerClient, operatorParty: String) = IO(
     client
