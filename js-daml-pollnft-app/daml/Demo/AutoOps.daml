@@ -1,0 +1,72 @@
+module Demo.AutoOps where
+
+    import qualified Daml.Trigger as T
+    import Topl.Onboarding
+    import Topl.Asset
+    import Topl.Utils
+    import Demo.Poll
+    import DA.Optional (whenSome)
+
+    import Demo.Onboarding
+
+    isConfirmed: SendStatus -> Bool
+    isConfirmed New = False 
+    isConfirmed Pending = False 
+    isConfirmed (Sent {} ) = False 
+    isConfirmed (FailedToSend {} ) = False 
+    isConfirmed (Confirmed {}) = True
+
+    initSession : T.Trigger ()
+    initSession = T.Trigger with
+        initialize = pure ()
+        updateState = \_ -> pure ()
+        rule = \operator -> do
+            demoPollVotedTuples <- T.query @DemoPollVoted
+            demoPolls <- mapA
+                            (\x -> do
+                                let theDemoPollVoted = snd x
+                                unsignedAssetTransferRequest <- T.query @UnsignedAssetTransferRequest
+                                res <- mapA
+                                    (\y -> do
+                                        T.dedupExercise 
+                                            (fst x) 
+                                            (DemoPollVoted_CaptureSignRequest  (snd y) (fst y))
+                                        )
+                                    (filter (\y -> ((snd y).requestor == theDemoPollVoted.participant)) unsignedAssetTransferRequest)
+                                pure ()
+                                )
+                            demoPollVotedTuples
+            acceptedConnectionsTuples <- T.query @AcceptedConnection
+            demoPolls <- mapA
+                            (\x -> do
+                                let theFirstConnection = snd x
+                                signedAssetMintingTuples <- T.query @SignedAssetMinting
+                                res <- mapA
+                                    (\y -> do
+                                        T.dedupExercise 
+                                            (fst x) 
+                                            (AcceptedConnection_StartPoll  (snd y) (fst y))
+                                        )
+                                    (filter (\y -> ((snd y).requestor == theFirstConnection.user) && (isConfirmed (snd y).sendStatus)) signedAssetMintingTuples)
+                                pure ()
+                                )
+                            acceptedConnectionsTuples
+            tuplesConnections <- T.query @ConnectionRequest
+            let firstConnections = map fst tuplesConnections
+            let firstConnectionsData = map snd tuplesConnections
+            createUser <- mapA 
+                                (\x -> 
+                                    T.dedupExercise 
+                                        (fst x)
+                                        ConnectionRequest_Accept
+                                        ) 
+                            tuplesConnections 
+            sendPolys <- mapA 
+                (\firstConnection -> do
+                    operatorUser <- T.queryContractKey  @User (operator, operator)
+                    whenSome operatorUser (\x -> T.dedupExercise (fst x) (User_SendPolys [firstConnection.operatorAddress] [ (firstConnection.userAddress, 1000 )] firstConnection.operatorAddress  10))
+                )
+                firstConnectionsData
+            pure ()
+        registeredTemplates = T.AllInDar
+        heartbeat = None

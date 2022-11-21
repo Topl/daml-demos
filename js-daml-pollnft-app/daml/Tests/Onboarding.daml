@@ -1,0 +1,25 @@
+module Tests.Onboarding where
+
+    import Demo.Onboarding
+    import Daml.Script
+    import Topl.Utils
+
+    -- createUser = script do  
+    --     operator <- allocateParty "Operator"
+    --     alice <- allocateParty "Alice"
+    --     let asset = AssetCode
+    --             with
+    --                 version = 1
+    --                 shortName = "Vote"
+    --     userCid <- submit alice do
+    --             createCmd FirstConnection with 
+    --                         user = alice
+    --                         operator = operator
+    --                         operatorAddress = "AUANVY6RqbJtTnQS1AFTQBjXMFYDknhV8NEixHFLmeZynMxVbp64"
+    --                         userAddress = ""
+    --                         yesAddress = ""
+    --                         noAddress = ""
+    --                         changeAddress = "AUANVY6RqbJtTnQS1AFTQBjXMFYDknhV8NEixHFLmeZynMxVbp64"
+    --                         assetCode = asset
+
+    --     assert True

@@ -1,0 +1,105 @@
+module Demo.Poll where
+
+    import Topl.Asset
+    import Topl.Utils
+
+    type DemoPollId = ContractId DemoPoll
+
+    template DemoPollVoted
+        with
+            operator     : Party
+            participant  : Party 
+            isThisADemo: Bool
+        where
+            signatory operator, participant
+
+            key (participant): (Party)
+
+            maintainer key
+
+            choice DemoPollVoted_CaptureSignRequest: ContractId DemoPollSignRequest with
+                    unsignedAssetTransfer: UnsignedAssetTransferRequest
+                    unsignedAssetTransferCid: ContractId UnsignedAssetTransferRequest
+                controller operator
+                do
+                    create DemoPollSignRequest with ..
+            choice DemoPollVoted_Archive: ()
+                controller operator
+                do
+                    pure ()
+
+    template DemoPollSignRequest
+        with
+            operator : Party
+            participant : Party
+            unsignedAssetTransfer: UnsignedAssetTransferRequest
+            unsignedAssetTransferCid: ContractId UnsignedAssetTransferRequest
+            isThisADemo: Bool
+        where
+            signatory operator, participant
+
+            key (participant) : (Party)
+
+            maintainer key
+
+
+
+    template DemoPoll
+        with 
+            operator     : Party
+            participant  : Party
+            fromAddress  : Text
+            yesAddress   : Text
+            noAddress : Text
+            changeAddress : Text
+            assetCode : AssetCode
+            boxNonce : Int
+        where
+            signatory operator, participant
+
+            key (participant): Party
+
+            maintainer key
+
+            choice DemoPoll_YesThisIsDemo: AssetTransferRequestCid
+                controller participant
+                do
+                    create DemoPollVoted with isThisADemo = True, ..
+                    create AssetTransferRequest with 
+                        operator       = operator
+                        requestor      = participant
+                        someOrgId      = None
+                        from           = [fromAddress]
+                        to             = [ (yesAddress, 1)]
+                        quantity       = 1
+                        someCommitRoot = None
+                        someMetadata   = None
+                        fee            = 100
+                        ..
+            choice DemoPoll_NoThisIsNotDemo: AssetTransferRequestCid
+                controller participant
+                do
+                    create DemoPollVoted with isThisADemo = False, ..
+                    create AssetTransferRequest with 
+                        operator       = operator
+                        requestor      = participant
+                        someOrgId      = None
+                        from           = [fromAddress]
+                        to             = [ (noAddress, 1)]
+                        quantity       = 1
+                        someCommitRoot = None
+                        someMetadata   = None
+                        fee            = 100
+                        ..
+            choice DemoPoll_Timeout: ()
+                controller operator
+                do return ()
+
+    template PollAnswer
+        with
+            operator: Party
+            participant: Party
+            answer: Bool
+        where
+            signatory operator, participant
+            

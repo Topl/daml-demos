@@ -1,0 +1,84 @@
+module Demo.Onboarding where
+
+    import Demo.Poll
+    import Topl.Onboarding
+    import Topl.Asset
+    import Topl.Utils
+
+    template ConnectionRequest
+        with
+            user: Party
+            operator: Party
+            operatorAddress: Text
+            userAddress: Text
+            yesAddress : Text
+            noAddress : Text
+            changeAddress : Text
+            assetCode : AssetCode
+        where
+            signatory user
+
+            observer operator
+
+            key (user): Party
+
+            maintainer key
+
+            choice ConnectionRequest_Accept: ContractId AcceptedConnection
+                controller operator
+                do
+                    let asset = AssetCode
+                                    with
+                                        version = 1
+                                        shortName = "Vote"
+                    create AssetMintingRequest
+                        with 
+                            requestor = user
+                            someOrgId = None
+                            from      = [ operatorAddress ]
+                            to        = [ (userAddress, 1000 )]
+                            changeAddress  = operatorAddress
+                            assetCode   = asset
+                            quantity   = 1
+                            someCommitRoot = None
+                            someMetadata   = None
+                            fee            = 100
+                            ..
+                    create User with ..
+                    create AcceptedConnection 
+                        with
+                            ..
+
+    template AcceptedConnection
+        with
+            user: Party
+            operator: Party
+            operatorAddress: Text
+            userAddress: Text
+            yesAddress : Text
+            noAddress : Text
+            changeAddress : Text
+            assetCode : AssetCode
+        where
+
+            signatory user, operator
+
+            observer operator
+
+            key (user): Party
+
+            maintainer key
+
+            choice AcceptedConnection_StartPoll: ContractId DemoPoll with
+                signedAssetMinting: SignedAssetMinting
+                signedAssetMintingCid: ContractId SignedAssetMinting
+                    controller operator
+                do
+                    archive signedAssetMintingCid
+                    create DemoPoll with
+                        participant = user
+                        fromAddress = userAddress
+                        assetCode = assetCode
+                        boxNonce = signedAssetMinting.boxNonce
+                        ..
+
