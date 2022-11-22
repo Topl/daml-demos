@@ -36,7 +36,7 @@ module Demo.Onboarding where
                             requestor = user
                             someOrgId = None
                             from      = [ operatorAddress ]
-                            to        = [ (userAddress, 1000 )]
+                            to        = [ (userAddress, 1 )]
                             changeAddress  = operatorAddress
                             assetCode   = asset
                             quantity   = 1

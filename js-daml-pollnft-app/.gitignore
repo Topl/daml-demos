@@ -5,6 +5,7 @@ build
 node_modules
 
 *.log
+log/
 
 ui/daml.js
 /.bloop

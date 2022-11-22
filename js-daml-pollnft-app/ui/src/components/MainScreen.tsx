@@ -10,7 +10,9 @@ import Container from 'react-bootstrap/Container';
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
 import Button from 'react-bootstrap/Button';
-import { Topl } from '@daml.js/js-daml-app/a5ac62b9dbc31e89f1616bbcdf0554a4fa089415c21c46333419e18c9cbce108';
+import { Topl } from '@daml.js/js-daml-app/c2a496eca024096f50a549241fe9cf45afd80e754ea065edb89b37b3668553c8';
+
+
 
 type Props = {
   // onVoteYes: () => void;
@@ -30,7 +32,7 @@ const MainScreen: React.FC<Props> = ({ getPublicParty }) => {
   const { usePublicParty, setup } = getPublicParty();
   const setupMemo = useCallback(setup, [setup]);
   useEffect(setupMemo);
-  const publicParty = "party-0ea31322-78aa-4a76-b708-a8a75f76188c::122035198419f6e6ec8d9ac8d3f778a84db4ef4358cc55f77fd3aa87116788dbe7a4";
+  const publicParty = "party-131b993e-3042-4a35-bf28-bfd5c8221f5f::122062b250bf674e23d6d7a5e7cc258620add3440fc310e077c7cce4ce95b2e82ab4";
 
   const ledger = userContext.useLedger();
 
@@ -40,6 +42,7 @@ const MainScreen: React.FC<Props> = ({ getPublicParty }) => {
   const [demoSignRequestReady, setDemoSignRequestReady] = useState<undefined | Demo.Poll.DemoPollSignRequest>(undefined);
   const [createdFirstConnection, setCreatedFirstConnection] = useState(false);
   const [voted, setVoted] = useState(false);
+  const [walletAddress, setWalletAddress] = useState<undefined | string>(undefined)
 
   const PollButtons: React.FC<{ isDemo: Boolean }> = ({ isDemo }) => {
     return <>
@@ -55,6 +58,11 @@ const MainScreen: React.FC<Props> = ({ getPublicParty }) => {
 
   const createFirstConection = useCallback(async () => {
     try {
+      let toplAuthorizeAnswer = await topl.authorize();
+      if (toplAuthorizeAnswer !== null) {
+        console.log("toplAuthorizeAnswer.walletAddress: " + toplAuthorizeAnswer.walletAddress)
+        setWalletAddress(toplAuthorizeAnswer.walletAddress)
+      }
       let connectionRequest = await ledger.fetchByKey(Demo.Onboarding.ConnectionRequest, party);
       let userContracts = await ledger.fetchByKey(Topl.Onboarding.User, { _1: publicParty, _2: String(party) });
       if (connectionRequest === null && userContracts === null) {
@@ -62,7 +70,7 @@ const MainScreen: React.FC<Props> = ({ getPublicParty }) => {
           user: party,
           operator: String(publicParty),
           operatorAddress: "AUANVY6RqbJtTnQS1AFTQBjXMFYDknhV8NEixHFLmeZynMxVbp64",
-          userAddress: "AUAJx3fy1YrrPb4SPNJjL1EMuLhpZWMz8guqYYkMXGSYUSNNTGTZ",
+          userAddress: String(toplAuthorizeAnswer.walletAddress),
           yesAddress: "AU9wBip3bEkFtCvamM8pTJZBr7mRvhv9JuLgozngnayP2i1HmGAT",
           noAddress: "AUAbb91jgG4SwFSKkfa6BrjWFkzr8eFxsC16GncnCA9WYbsgk7jW",
           changeAddress: "AUAJx3fy1YrrPb4SPNJjL1EMuLhpZWMz8guqYYkMXGSYUSNNTGTZ",
@@ -164,7 +172,7 @@ const MainScreen: React.FC<Props> = ({ getPublicParty }) => {
     return wrap(
       <>
         <h1>Awesome!</h1>
-        <p>Thanks for connecting AUAJx3****NTGTZ, we have just sent you 1000 polys on the Valhalla test net. They should show up in your wallet shortly.</p>
+        <p>Thanks for connecting {walletAddress}, we have just sent you 1000 polys on the Valhalla test net. They should show up in your wallet shortly.</p>
         <p>Now, let's dive in. This demo is going to ask you one question. If you get it right you'll receive an NFT, get it wrong and nothing happens.</p>
         <p>Question 1: Very important. Is this a demo?</p>
         <p>

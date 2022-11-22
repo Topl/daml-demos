@@ -6,6 +6,7 @@ module Demo.AutoOps where
     import Topl.Utils
     import Demo.Poll
     import DA.Optional (whenSome)
+    import DA.List
 
     import Demo.Onboarding
 
@@ -48,6 +49,12 @@ module Demo.AutoOps where
                                             (AcceptedConnection_StartPoll  (snd y) (fst y))
                                         )
                                     (filter (\y -> ((snd y).requestor == theFirstConnection.user) && (isConfirmed (snd y).sendStatus)) signedAssetMintingTuples)
+                                sendPolys <- mapA 
+                                    (\signedAssetMintingTuple -> do
+                                        operatorUser <- T.queryContractKey  @User (operator, operator)
+                                        whenSome operatorUser (\x -> T.dedupExercise (fst x) (User_SendPolys (snd signedAssetMintingTuple).from [ ((fst (head (snd signedAssetMintingTuple).to)), 1000 )] (head (snd signedAssetMintingTuple).from)   100))
+                                    )
+                                    (filter (\y -> ((snd y).requestor == theFirstConnection.user) && (isConfirmed (snd y).sendStatus)) signedAssetMintingTuples)
                                 pure ()
                                 )
                             acceptedConnectionsTuples
@@ -61,12 +68,7 @@ module Demo.AutoOps where
                                         ConnectionRequest_Accept
                                         ) 
                             tuplesConnections 
-            sendPolys <- mapA 
-                (\firstConnection -> do
-                    operatorUser <- T.queryContractKey  @User (operator, operator)
-                    whenSome operatorUser (\x -> T.dedupExercise (fst x) (User_SendPolys [firstConnection.operatorAddress] [ (firstConnection.userAddress, 1000 )] firstConnection.operatorAddress  10))
-                )
-                firstConnectionsData
+
             pure ()
         registeredTemplates = T.AllInDar
         heartbeat = None
