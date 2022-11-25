@@ -24,6 +24,15 @@ export const publicContext = isRunningOnHub()
   ? createLedgerContext()
   : userContext;
 
+// type InitialState = {}
+
+// type AuthorizationStatus = {
+//   authorized: boolean,
+//   walletAddress: undefined | string
+// }
+
+// export type MainScreenState = InitialState | AuthorizationStatus;
+
 /**
  * React component for the entry point into the application.
  */
@@ -62,9 +71,7 @@ const App: React.FC = () => {
           token={credentials.token}
           party={credentials.party}
           user={credentials.user}>
-          <MainScreen
-            getPublicParty={credentials.getPublicParty}
-          />
+          <MainScreen />
         </userContext.DamlLedger>
       </Wrap>
     );
