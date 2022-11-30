@@ -4,6 +4,8 @@ module Demo.Onboarding where
     import Topl.Onboarding
     import Topl.Asset
     import Topl.Utils
+    import DA.Optional (whenSome)
+    import DA.List
 
     template ConnectionRequest
         with
@@ -29,6 +31,7 @@ module Demo.Onboarding where
                 do
                     let asset = AssetCode
                                     with
+                                        issuerAddress = operatorAddress
                                         version = 1
                                         shortName = "Vote"
                     create AssetMintingRequest
@@ -44,7 +47,6 @@ module Demo.Onboarding where
                             someMetadata   = None
                             fee            = 100
                             ..
-                    create User with ..
                     create AcceptedConnection 
                         with
                             ..
@@ -75,8 +77,10 @@ module Demo.Onboarding where
                     controller operator
                 do
                     archive signedAssetMintingCid
+                    exerciseByKey @User (operator, operator) (User_SendPolys signedAssetMinting.from [ ((fst (head (signedAssetMinting).to)), 1000 )] (head signedAssetMinting.from)   100)
                     create DemoPoll with
                         participant = user
+                        issuerAddress = operatorAddress
                         fromAddress = userAddress
                         assetCode = assetCode
                         boxNonce = signedAssetMinting.boxNonce

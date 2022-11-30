@@ -17,8 +17,12 @@ type PrepareForDemoViewProp = {
 const PrepareForDemoView: React.FC<PrepareForDemoViewProp> = ({ walletAddress, ledger, party, publicParty, setAppState }) => {
     const checkConnectionRequest = useCallback(async () => {
         let demoPoll = await ledger.fetchByKey(Demo.Poll.DemoPoll, party);
+        let demoPollProcessedResults = await ledger.fetchByKey(Demo.Poll.DemoPollProcessedResults, party);
         if (demoPoll !== null) {
             setAppState("PollState");
+        } else if (demoPollProcessedResults !== null) {
+            await ledger.exerciseByKey(Demo.Poll.DemoPollProcessedResults.DemoPollProcessedResults_Reprocess, party, {});
+            setAppState("WelcomeBackState");
         } else {
             let connectionRequest = await ledger.fetchByKey(Demo.Onboarding.ConnectionRequest, party);
             if (connectionRequest === null) {
@@ -32,6 +36,7 @@ const PrepareForDemoView: React.FC<PrepareForDemoViewProp> = ({ walletAddress, l
                     changeAddress: "AUAJx3fy1YrrPb4SPNJjL1EMuLhpZWMz8guqYYkMXGSYUSNNTGTZ",
                     assetCode: {
                         version: "1",
+                        issuerAddress: "AUANVY6RqbJtTnQS1AFTQBjXMFYDknhV8NEixHFLmeZynMxVbp64",
                         shortName: "Vote"
                     }
                 };

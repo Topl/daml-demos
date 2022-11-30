@@ -30,8 +30,7 @@ const SigningView: React.FC<SigningViewProp> = ({ ledger, party, setAppState }) 
             let mergedSignedDetail = { ...rawTx, signatures: signedTx.signatures };
             let exerciseResult = await ledger.exerciseByKey(Demo.Poll.DemoPollSignRequest.DemoPollSignRequest_Sign, party, { signedTx: JSON.stringify(mergedSignedDetail) });
             if (exerciseResult !== null) {
-                console.log("Sent signed transaction!")
-                setAppState("ResultView")
+                setAppState("ResultViewState")
             }
         } else {
             timeout.current = window.setTimeout(checkDemoSignRequest, 5000);

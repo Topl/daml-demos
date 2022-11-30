@@ -24,14 +24,6 @@ export const publicContext = isRunningOnHub()
   ? createLedgerContext()
   : userContext;
 
-// type InitialState = {}
-
-// type AuthorizationStatus = {
-//   authorized: boolean,
-//   walletAddress: undefined | string
-// }
-
-// export type MainScreenState = InitialState | AuthorizationStatus;
 
 /**
  * React component for the entry point into the application.

@@ -22,6 +22,38 @@ module Demo.AutoOps where
         initialize = pure ()
         updateState = \_ -> pure ()
         rule = \operator -> do
+            demoPollShowResultsTuples <- T.query @DemoPollShowResults
+            demoPollShowResults <- mapA
+                                        (\x -> do
+                                            let theDemoPollShowResult = snd x
+                                            someYesAssetBalanceRes <- T.queryContractKey @AssetBalanceResponse (theDemoPollShowResult.participant, theDemoPollShowResult.yesAddress, theDemoPollShowResult.assetCode.issuerAddress, theDemoPollShowResult.assetCode)
+                                            someNoAssetBalanceRes <- T.queryContractKey @AssetBalanceResponse (theDemoPollShowResult.participant, theDemoPollShowResult.noAddress, theDemoPollShowResult.assetCode.issuerAddress, theDemoPollShowResult.assetCode) 
+                                            whenSome someYesAssetBalanceRes (\yesAssetBalanceRes -> 
+                                                                                    whenSome someNoAssetBalanceRes (\noAssetBalanceRes -> 
+                                                                                        T.dedupExercise
+                                                                                            (fst x)
+                                                                                            (DemoPollShowResults_CaptureResult (snd yesAssetBalanceRes) (fst yesAssetBalanceRes) (snd noAssetBalanceRes) (fst noAssetBalanceRes))
+                                                                                ))
+                                        )
+                                        demoPollShowResultsTuples
+            demoPollCompletedTuples <- T.query @DemoPollCompleted
+            demoPollCompleted <- mapA
+                                    (\x -> do
+                                        let theDemoPollCompleted = snd x
+                                        completedTransferRequests <- T.query @SignedAssetTransfer
+                                        let confirmedTransactions = (filter (\y -> ((snd y).requestor == theDemoPollCompleted.participant) && isConfirmed ((snd y).sendStatus)) completedTransferRequests)
+                                        if (not (null confirmedTransactions)) then
+                                            do
+                                                (T.dedupExercise 
+                                                    (fst x) 
+                                                    (DemoPollCompleted_AskForBalance))
+                                                (T.dedupExercise
+                                                    (fst (head confirmedTransactions))
+                                                    (SignedAssetTransfer_Archive))
+                                        else
+                                            pure ()
+                                        )
+                                    demoPollCompletedTuples
             demoPollVotedTuples <- T.query @DemoPollVoted
             demoPolls <- mapA
                             (\x -> do
@@ -48,12 +80,6 @@ module Demo.AutoOps where
                                             (fst x) 
                                             (AcceptedConnection_StartPoll  (snd y) (fst y))
                                         )
-                                    (filter (\y -> ((snd y).requestor == theFirstConnection.user) && (isConfirmed (snd y).sendStatus)) signedAssetMintingTuples)
-                                sendPolys <- mapA 
-                                    (\signedAssetMintingTuple -> do
-                                        operatorUser <- T.queryContractKey  @User (operator, operator)
-                                        whenSome operatorUser (\x -> T.dedupExercise (fst x) (User_SendPolys (snd signedAssetMintingTuple).from [ ((fst (head (snd signedAssetMintingTuple).to)), 1000 )] (head (snd signedAssetMintingTuple).from)   100))
-                                    )
                                     (filter (\y -> ((snd y).requestor == theFirstConnection.user) && (isConfirmed (snd y).sendStatus)) signedAssetMintingTuples)
                                 pure ()
                                 )
