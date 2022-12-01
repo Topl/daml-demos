@@ -20,7 +20,7 @@ import WelcomeBackView from './WelcomeBackView'
  */
 const MainScreen: React.FC = ({ }) => {
   const party = userContext.useParty();
-  const publicParty = "party-06caf46e-ddb3-4fc8-b026-afefa8247a9a::122077d9dbc0bd03750865fc9f2ba589f65b3244578fc5652286300f83a460416a35";
+  const publicParty = "party-2f7bb3a8-7cad-4c36-9d3e-677e50116a77::1220092026ef19d5186bd1cc612d01893cff876aed548831dd7e817a0dd29b466cba";
 
   const ledger = userContext.useLedger();
   const initialState: StateType = "InitialState"

@@ -1,7 +1,6 @@
 module Demo.AutoOps where
 
     import qualified Daml.Trigger as T
-    import Topl.Onboarding
     import Topl.Asset
     import Topl.Utils
     import Demo.Poll
@@ -85,9 +84,9 @@ module Demo.AutoOps where
                                 )
                             acceptedConnectionsTuples
             tuplesConnections <- T.query @ConnectionRequest
-            let firstConnections = map fst tuplesConnections
-            let firstConnectionsData = map snd tuplesConnections
-            createUser <- mapA 
+            -- let firstConnections = map fst tuplesConnections
+            -- let firstConnectionsData = map snd tuplesConnections
+            acceptConnectior <- mapA 
                                 (\x -> 
                                     T.dedupExercise 
                                         (fst x)
