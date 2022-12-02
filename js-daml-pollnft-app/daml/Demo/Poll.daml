@@ -2,6 +2,7 @@ module Demo.Poll where
 
     import Topl.Asset
     import Topl.Utils
+    import DA.List
 
     type DemoPollId = ContractId DemoPoll
 
@@ -56,12 +57,13 @@ module Demo.Poll where
                 controller participant
                 do
                     exercise unsignedAssetTransferCid UnsignedAssetTransfer_Sign with ..
-                    create DemoPollCompleted with ..
+                    create DemoPollCompleted with userAddress = head unsignedAssetTransfer.from, ..
 
     template DemoPollCompleted
         with
             operator : Party
             participant : Party
+            userAddress: Text
             yesAddress   : Text
             noAddress : Text
             assetCode : AssetCode
@@ -76,7 +78,26 @@ module Demo.Poll where
                 controller operator
                 do
                     create AssetBalanceRequest with requestor = participant, address = yesAddress,  ..
-                    create AssetBalanceRequest with requestor = participant, address = noAddress,  ..
+                    create AssetBalanceRequest with requestor = participant, address = noAddress,  .. 
+                    let nft = AssetCode
+                                    with
+                                        issuerAddress = assetCode.issuerAddress
+                                        version = 1
+                                        shortName = "TOPLNFT"
+
+                    create AssetMintingRequest
+                        with 
+                            requestor = participant
+                            someOrgId = None
+                            from      = [ assetCode.issuerAddress ]
+                            to        = [ (userAddress, 1 )]
+                            changeAddress  = assetCode.issuerAddress
+                            quantity   = 1
+                            someCommitRoot = None
+                            someMetadata   = None
+                            fee            = 100
+                            assetCode = nft
+                            ..
                     create DemoPollShowResults with ..
                     return ()
 
@@ -84,6 +105,7 @@ module Demo.Poll where
         with
             operator : Party
             participant : Party
+            userAddress : Text
             yesAddress   : Text
             noAddress : Text
             assetCode : AssetCode
@@ -94,16 +116,34 @@ module Demo.Poll where
 
             maintainer key
 
+            nonconsuming choice DemoPollShowResults_CaptureNFTAssetMinting: ContractId AssetBalanceRequest
+                with
+                    signedAssetMinting: SignedAssetMinting
+                    signedAssetMintingCid: ContractId SignedAssetMinting
+                controller operator
+                do
+                    let nft = AssetCode
+                                    with
+                                        issuerAddress = assetCode.issuerAddress
+                                        version = 1
+                                        shortName = "TOPLNFT"
+                    archive signedAssetMintingCid
+                    create AssetBalanceRequest with requestor = participant, address = userAddress, assetCode = nft, .. 
+
+
             choice DemoPollShowResults_CaptureResult: ContractId DemoPollProcessedResults
                 with
                     yesBalance: AssetBalanceResponse
                     yesBalanceCid: ContractId AssetBalanceResponse
                     noBalance: AssetBalanceResponse
                     noBalanceCid: ContractId AssetBalanceResponse
+                    userBalance: AssetBalanceResponse
+                    userBalanceCid: ContractId AssetBalanceResponse
                 controller operator
                 do
                     let totalVotes = (intToDecimal yesBalance.quantity + intToDecimal noBalance.quantity)
                     create DemoPollProcessedResults with 
+                        hasNFT = userBalance.quantity > 0
                         yesCount = yesBalance.quantity 
                         noCount = noBalance.quantity
                         yesPercent = 100.0 * (intToDecimal yesBalance.quantity  / totalVotes)
@@ -114,12 +154,15 @@ module Demo.Poll where
         with
             operator : Party
             participant : Party
+            userAddress: Text
             yesCount   : Int
             yesPercent   : Decimal
             noCount : Int
             noPercent : Decimal
             yesAddress   : Text
             noAddress : Text
+            hasNFT : Bool
+            userBalanceCid: ContractId AssetBalanceResponse
             yesBalanceCid: ContractId AssetBalanceResponse
             noBalanceCid: ContractId AssetBalanceResponse
             assetCode : AssetCode
@@ -136,15 +179,23 @@ module Demo.Poll where
                 do
                     exercise yesBalanceCid AssetBalanceResponse_Archive
                     exercise noBalanceCid AssetBalanceResponse_Archive
+                    exercise userBalanceCid AssetBalanceResponse_Archive
                     return ()
 
             choice DemoPollProcessedResults_Reprocess: ()
                 controller participant
                 do
+                    let nft = AssetCode
+                                    with
+                                        issuerAddress = assetCode.issuerAddress
+                                        version = 1
+                                        shortName = "TOPLNFT"
                     exercise yesBalanceCid AssetBalanceResponse_Archive
                     exercise noBalanceCid AssetBalanceResponse_Archive
+                    exercise userBalanceCid AssetBalanceResponse_Archive
                     create AssetBalanceRequest with requestor = participant, address = yesAddress,  ..
                     create AssetBalanceRequest with requestor = participant, address = noAddress,  ..
+                    create AssetBalanceRequest with requestor = participant, address = userAddress, assetCode = nft, ..
                     create DemoPollShowResults with ..
                     return ()
 

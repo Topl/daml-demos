@@ -21,18 +21,33 @@ module Demo.AutoOps where
         initialize = pure ()
         updateState = \_ -> pure ()
         rule = \operator -> do
+            let nft = AssetCode
+                            with
+                                issuerAddress = "AUANVY6RqbJtTnQS1AFTQBjXMFYDknhV8NEixHFLmeZynMxVbp64"
+                                version = 1
+                                shortName = "TOPLNFT"
             demoPollShowResultsTuples <- T.query @DemoPollShowResults
             demoPollShowResults <- mapA
                                         (\x -> do
+                                            signedAssetMintingTuples <- T.query @SignedAssetMinting
+                                            res <- mapA
+                                                (\y -> do
+                                                    T.dedupExercise
+                                                        (fst x)
+                                                        (DemoPollShowResults_CaptureNFTAssetMinting (snd y) (fst y))
+                                                    )
+                                                (filter (\y -> ((snd y).assetCode == nft) && (isConfirmed (snd y).sendStatus)) signedAssetMintingTuples)                                        
                                             let theDemoPollShowResult = snd x
-                                            someYesAssetBalanceRes <- T.queryContractKey @AssetBalanceResponse (theDemoPollShowResult.participant, theDemoPollShowResult.yesAddress, theDemoPollShowResult.assetCode.issuerAddress, theDemoPollShowResult.assetCode)
-                                            someNoAssetBalanceRes <- T.queryContractKey @AssetBalanceResponse (theDemoPollShowResult.participant, theDemoPollShowResult.noAddress, theDemoPollShowResult.assetCode.issuerAddress, theDemoPollShowResult.assetCode) 
+                                            someYesAssetBalanceRes <- T.queryContractKey @AssetBalanceResponse (theDemoPollShowResult.participant, theDemoPollShowResult.yesAddress, theDemoPollShowResult.assetCode)
+                                            someNoAssetBalanceRes <- T.queryContractKey @AssetBalanceResponse (theDemoPollShowResult.participant, theDemoPollShowResult.noAddress, theDemoPollShowResult.assetCode) 
+                                            someUserAssetBalanceRes <- T.queryContractKey @AssetBalanceResponse (theDemoPollShowResult.participant, theDemoPollShowResult.userAddress, nft) 
                                             whenSome someYesAssetBalanceRes (\yesAssetBalanceRes -> 
                                                                                     whenSome someNoAssetBalanceRes (\noAssetBalanceRes -> 
-                                                                                        T.dedupExercise
-                                                                                            (fst x)
-                                                                                            (DemoPollShowResults_CaptureResult (snd yesAssetBalanceRes) (fst yesAssetBalanceRes) (snd noAssetBalanceRes) (fst noAssetBalanceRes))
-                                                                                ))
+                                                                                        whenSome someUserAssetBalanceRes (\userAssetBalanceRes ->  
+                                                                                            T.dedupExercise
+                                                                                                (fst x)
+                                                                                                (DemoPollShowResults_CaptureResult (snd yesAssetBalanceRes) (fst yesAssetBalanceRes) (snd noAssetBalanceRes) (fst noAssetBalanceRes) (snd userAssetBalanceRes) (fst userAssetBalanceRes))
+                                                                                )))
                                         )
                                         demoPollShowResultsTuples
             demoPollCompletedTuples <- T.query @DemoPollCompleted

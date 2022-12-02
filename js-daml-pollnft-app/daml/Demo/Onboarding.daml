@@ -4,7 +4,6 @@ module Demo.Onboarding where
     import Topl.Onboarding
     import Topl.Asset
     import Topl.Utils
-    import DA.Optional (whenSome)
     import DA.List
 
     template ConnectionRequest

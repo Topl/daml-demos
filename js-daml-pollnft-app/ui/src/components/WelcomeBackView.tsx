@@ -6,6 +6,7 @@ import Ledger from "@daml/ledger"
 import { Alert } from "react-bootstrap";
 import StateType from './AppState';
 import { Demo } from '@daml.js/js-daml-app/js-daml-app-0.1.0'
+import Image from 'react-bootstrap/Image'
 
 type ResultViewProp = {
     ledger: Ledger,
@@ -16,6 +17,17 @@ type ResultViewProp = {
 const WelcomeBackView: React.FC<ResultViewProp> = ({ ledger, party, setAppState }) => {
     const [yesPercentage, setYesPercentage] = useState<undefined | number>(undefined)
     const [noPercentage, setNoPercentage] = useState<undefined | number>(undefined)
+    const [hasImage, setHasImage] = useState<undefined | boolean>(undefined)
+
+
+
+    const imageUrl = (hasNFT: Boolean) => {
+        if (hasNFT) {
+            return "/img/toplnft.png"
+        } else {
+            return "/img/nonft.png"
+        }
+    }
 
     const timeout = useRef<number>();
 
@@ -24,6 +36,7 @@ const WelcomeBackView: React.FC<ResultViewProp> = ({ ledger, party, setAppState 
         if (demoPollProcessedResults !== null) {
             setYesPercentage(Number(demoPollProcessedResults.payload.yesPercent))
             setNoPercentage(Number(demoPollProcessedResults.payload.noPercent))
+            setHasImage(demoPollProcessedResults.payload.hasNFT)
         } else {
             timeout.current = window.setTimeout(checkBalances, 5000);
         }
@@ -65,6 +78,8 @@ const WelcomeBackView: React.FC<ResultViewProp> = ({ ledger, party, setAppState 
                     NO
                 </Button>
             </div>
+            <p>Here is your NFT</p>
+            <Image className="float-right" src={imageUrl(Boolean(hasImage))} />
             <div>
                 <Button variant="primary" type="submit" onClick={e => resetDemo()}>
                     Reset demo
