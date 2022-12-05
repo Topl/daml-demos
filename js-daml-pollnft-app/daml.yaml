@@ -1,0 +1,17 @@
+sdk-version: 2.3.2
+name: js-daml-app
+version: 0.1.0
+source: daml
+dependencies:
+- daml-prim
+- daml-stdlib
+- daml-script
+- daml-trigger
+- ../../daml-bifrost-module/.daml/dist/topl-daml-api-0.0.1.dar 
+start-navigator: true
+codegen:
+  js:
+    output-directory: ui/daml.js/js-daml-app-0.1.0
+    npm-scope: daml.js/js-daml-app
+# Remove this line when running against a ledger without user management.
+init-script: Setup:initialize

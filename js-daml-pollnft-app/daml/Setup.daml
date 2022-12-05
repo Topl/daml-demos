@@ -1,0 +1,54 @@
+module Setup where
+
+import Daml.Script
+import Topl.Onboarding
+import qualified DA.Text as T
+
+import DA.Optional (fromSomeNote)
+
+initialize : Script [Party]
+initialize = do
+      operator <- createPublic
+      alice <- allocateParty "Alice"
+      aliceId <- validateUserId "alice"
+      bob <- allocateParty "Bob"
+      bobId <- validateUserId "bob"
+      eve <- allocateParty "Eve"
+      eveId <- validateUserId "eve"
+      debug ("operator: " <> partyToText operator)
+      operatorCid <- submit operator do
+        createCmd Operator with operator = operator, address = "AUANVY6RqbJtTnQS1AFTQBjXMFYDknhV8NEixHFLmeZynMxVbp64"
+      userInvitationCid <- submit operator do
+        exerciseCmd operatorCid  Operator_InviteUser 
+          with user = operator
+      aliceUserCid <- submit operator do
+        exerciseCmd userInvitationCid UserInvitation_Accept
+      createUser (Daml.Script.User aliceId (Some alice)) [(CanActAs alice), (CanReadAs operator)]
+      createUser (Daml.Script.User bobId (Some bob)) [CanActAs bob, CanReadAs operator]
+      createUser (Daml.Script.User eveId (Some eve)) [CanActAs eve, CanReadAs operator]
+      pure []
+
+createPublic : Script Party
+createPublic = do
+  publicUser <- getOrCreateUser "Public" None
+  pure $ getPrimaryParty publicUser
+
+getOrCreateUser : Text -> Optional Party -> Script Daml.Script.User
+getOrCreateUser alias publicM = do
+  userId <- validateUserId $ toUserId alias
+  try
+    getUser userId
+  catch
+    UserNotFound _ -> do
+      p <- allocateParty alias
+      let u = Daml.Script.User userId (Some p)
+      createUser u $ CanActAs p :: [CanReadAs public | Some public <- [publicM]]
+      pure u
+
+-- | Convert a text to a valid user id.
+toUserId : Text -> Text
+toUserId = T.asciiToLower
+
+-- | Try to get the primary party of a user and fail if the user has no associated primary party.
+getPrimaryParty : Daml.Script.User -> Party
+getPrimaryParty u = fromSomeNote ("User " <> userIdToText u.userId <> " is missing a primary party.") u.primaryParty
