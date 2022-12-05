@@ -31,7 +31,8 @@ object BrokerMain
     extends IOApp
     with PolyProcessorRegistrationModule
     with AssetTransferProcessorRegistrationModule
-    with AssetMintingProcessorRegistrationModule {
+    with AssetMintingProcessorRegistrationModule
+    with BalanceProcessorModule {
 
   val EXPECTED_ARG_COUNT = 4;
   val OPERATOR_USER = "public";
@@ -68,6 +69,7 @@ object BrokerMain
         _ <- registerAssetTransferRequestProcessor()
         _ <- registerSignedMintingRequestProcessor()
         _ <- registerSignedAssetTransferRequestProcessor()
+        _ <- registerAssetBalanceProcessor()
         _ <- IO.never[Unit]
       } yield ExitCode.Success
     }).flatten
