@@ -1,21 +1,33 @@
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/digital-asset/daml/blob/main/LICENSE)
-
 # js-daml-app
 
-See [documentation] for details.
+This is a simple application that integrates DAML, the Ribn wallet, and the Topl blockchain node (Bifrost). This application performs the
+following tasks:
 
-[documentation]: https://docs.daml.com/getting-started/installation.html
+- On login it authorizes the Ribn wallet with the application.
+- It extracts the wallet's address and sends a certain amount of polys to the wallet's address and a vote token.
+- It then allows the user to vote on a simple question.
+- After the user has voted it proposes the user to send the vote token to one of the token result addresses.
+- After the token is in the right address it shows the result to the user.
 
-Please ask for help on [the Daml forum] if you encounter any issue!
+During all of these interactions, the user interacts with DAML contracts, a broker intercepts the calls to perform
+operations on the blockchain and triggers handle the contracts created by the broker.
 
-[the Daml forum]: https://discuss.daml.com
+## Requirements
+
+This demo was tested under Windows using Windows Subsystem for Linux (WSL) and ubuntu. The following software
+is required:
+
+- [Daml]: https://docs.daml.com
+- [Node.js]: https://nodejs.dev
+- The broker software (available [here](https://github.com/Topl/daml-demos/tree/main/scala-daml-broker-app)).
+- Docker
+- Scala
+- SBT
+- JVM
+- The Ribn Chrome extension
+- A locally published version of the [daml-bifrost-module](https://github.com/Topl/daml-bifrost-module).
 
 ## Development Quick Start
-
-You need to have [Node.js] and [Daml] installed.
-
-[Node.js]: https://nodejs.dev
-[Daml]: https://docs.daml.com
 
 First, start the Daml components:
 
@@ -32,6 +44,25 @@ This will:
 - Watch for the `r` key press (`r` + Enter on Windows); when pressed, rebuild
   all of the Daml code, push the new DAR to the ledger, and rerun the JS/TS
   code generation.
+
+Under WSL the JSON API server might not start. If it is not active, run:
+
+```bash
+daml json-api --config json-api-app.conf
+```
+
+Next, start the broker. 
+
+```bash
+cd ../scala-daml-broker-app
+sbt 'run 127.0.0.1 6865 keyfile.json test'
+```
+
+Next, start the local bifrost node using the following docker command:
+
+```bash
+docker run -p 9085:9085 toplprotocol/bifrost-node:1.10.2 --forge --disableAuth --seed test --debug
+```
 
 Next, start the JS dev server:
 
