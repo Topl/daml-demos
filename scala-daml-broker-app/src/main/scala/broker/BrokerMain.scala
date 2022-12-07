@@ -47,7 +47,7 @@ object BrokerMain
       userManagementClient <- getUserManagementClient(client)
       operatorParty <- getOperatorParty(userManagementClient)
       _ <- IO.println("The operator party is: " + operatorParty)
-      uri <- IO(Uri("http://localhost:9085/"))
+      uri <- IO(Uri("http://127.0.0.1:9085/"))
       damlAppContext <- IO(new DamlAppContext(APP_ID, operatorParty, client))
       toplContext <- IO(
         new ToplContext(

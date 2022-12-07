@@ -7,4 +7,5 @@ object Dependencies {
   lazy val bramblCommon = "co.topl" %% "common" % bramblVersion
   lazy val catEffects = "org.typelevel" %% "cats-effect" % "3.3.12"
   lazy val toplDaml = "co.topl.daml" % "topl-daml-api" % "1.0.0-SNAPSHOT"
+  lazy val slf4j = "org.slf4j" % "slf4j-simple" % "2.0.5"
 }

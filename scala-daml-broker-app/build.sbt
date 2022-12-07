@@ -13,5 +13,6 @@ lazy val root = (project in file("."))
     libraryDependencies += scalaTest % Test,
     libraryDependencies += brambl,
     libraryDependencies += bramblCommon,
-    libraryDependencies += toplDaml
+    libraryDependencies += toplDaml,
+    libraryDependencies += slf4j
   )
