@@ -26,6 +26,7 @@ is required:
 - JVM
 - The Ribn Chrome extension
 - A locally published version of the [daml-bifrost-module](https://github.com/Topl/daml-bifrost-module).
+- The [daml-bifrost-module](https://github.com/Topl/daml-bifrost-module) as a sibling of the daml-demos directory. The daml-bifrost-module must have been built.
 
 ## Development Quick Start
 
