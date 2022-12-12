@@ -21,15 +21,20 @@ module Demo.AutoOps where
         initialize = pure ()
         updateState = \_ -> pure ()
         rule = \operator -> do
+            -- we first create the asset code
             let nft = AssetCode
                             with
+                                -- This address is fixed for the demo
                                 issuerAddress = "AUANVY6RqbJtTnQS1AFTQBjXMFYDknhV8NEixHFLmeZynMxVbp64"
                                 version = 1
                                 shortName = "TOPLNFT"
+            -- Test for poll results
             demoPollShowResultsTuples <- T.query @DemoPollShowResults
+            -- If poll results exist then:
             demoPollShowResults <- mapA
                                         (\x -> do
                                             signedAssetMintingTuples <- T.query @SignedAssetMinting
+                                            -- if the minting of the NFT was already done, then capture it
                                             res <- mapA
                                                 (\y -> do
                                                     T.dedupExercise
@@ -38,9 +43,11 @@ module Demo.AutoOps where
                                                     )
                                                 (filter (\y -> ((snd y).assetCode == nft) && (isConfirmed (snd y).sendStatus)) signedAssetMintingTuples)                                        
                                             let theDemoPollShowResult = snd x
+                                            -- wait for the response from the broker, which will create the AssetBalanceResponse contract
                                             someYesAssetBalanceRes <- T.queryContractKey @AssetBalanceResponse (theDemoPollShowResult.participant, theDemoPollShowResult.yesAddress, theDemoPollShowResult.assetCode)
                                             someNoAssetBalanceRes <- T.queryContractKey @AssetBalanceResponse (theDemoPollShowResult.participant, theDemoPollShowResult.noAddress, theDemoPollShowResult.assetCode) 
                                             someUserAssetBalanceRes <- T.queryContractKey @AssetBalanceResponse (theDemoPollShowResult.participant, theDemoPollShowResult.userAddress, nft) 
+                                            -- if we have the response we capture it to compute the final result of the demo
                                             whenSome someYesAssetBalanceRes (\yesAssetBalanceRes -> 
                                                                                     whenSome someNoAssetBalanceRes (\noAssetBalanceRes -> 
                                                                                         whenSome someUserAssetBalanceRes (\userAssetBalanceRes ->  
@@ -50,12 +57,15 @@ module Demo.AutoOps where
                                                                                 )))
                                         )
                                         demoPollShowResultsTuples
+            -- Check if the poll has already been completed, completed means that the user has already sent the vote token
             demoPollCompletedTuples <- T.query @DemoPollCompleted
             demoPollCompleted <- mapA
                                     (\x -> do
                                         let theDemoPollCompleted = snd x
                                         completedTransferRequests <- T.query @SignedAssetTransfer
+                                        -- if the transfer has been signed and completed, then we ask for the balance 
                                         let confirmedTransactions = (filter (\y -> ((snd y).requestor == theDemoPollCompleted.participant) && isConfirmed ((snd y).sendStatus)) completedTransferRequests)
+                                        -- the list of confirmed transactions needs to be non null
                                         if (not (null confirmedTransactions)) then
                                             do
                                                 (T.dedupExercise 
@@ -68,10 +78,13 @@ module Demo.AutoOps where
                                             pure ()
                                         )
                                     demoPollCompletedTuples
+            -- check if the user voted
             demoPollVotedTuples <- T.query @DemoPollVoted
             demoPolls <- mapA
                             (\x -> do
                                 let theDemoPollVoted = snd x
+                                -- if the user has voted, then check if we already have the unsigned transfer request
+                                -- we can capture the sign request and create the signing request to be captured by the ui
                                 unsignedAssetTransferRequest <- T.query @UnsignedAssetTransferRequest
                                 res <- mapA
                                     (\y -> do
@@ -83,6 +96,8 @@ module Demo.AutoOps where
                                 pure ()
                                 )
                             demoPollVotedTuples
+            -- once the operator has accepted the connection
+            -- we check that the minting has succeded before starting the poll
             acceptedConnectionsTuples <- T.query @AcceptedConnection
             demoPolls <- mapA
                             (\x -> do
@@ -98,9 +113,9 @@ module Demo.AutoOps where
                                 pure ()
                                 )
                             acceptedConnectionsTuples
+            -- the first step is to accept the connection (by the operator)
+            -- we have the user start the interaction because the user knows the operator public identifier
             tuplesConnections <- T.query @ConnectionRequest
-            -- let firstConnections = map fst tuplesConnections
-            -- let firstConnectionsData = map snd tuplesConnections
             acceptConnectior <- mapA 
                                 (\x -> 
                                     T.dedupExercise 

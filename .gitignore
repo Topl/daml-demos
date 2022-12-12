@@ -1,2 +1,3 @@
 .metals
 scala-daml-broker-app/keyfile.json
+*.swp
