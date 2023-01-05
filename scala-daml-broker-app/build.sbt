@@ -3,9 +3,10 @@ import Dependencies._
 resolvers += Resolver.mavenLocal
 
 ThisBuild / scalaVersion := "2.13.8"
-ThisBuild / version := "0.1.0-SNAPSHOT"
 ThisBuild / organization := "co.topl"
 ThisBuild / organizationName := "Topl"
+
+publish / skip := true
 
 inThisBuild(List(
   organization := "co.topl",
@@ -13,6 +14,7 @@ inThisBuild(List(
   licenses := List("MPL2.0" -> url("https://www.mozilla.org/en-US/MPL/2.0/")),
   sonatypeCredentialHost := "s01.oss.sonatype.org",
   sonatypeRepository := "https://s01.oss.sonatype.org/service/local",
+  git.useGitDescribe := true,
   developers := List(
     Developer(
       "mundacho",
@@ -35,10 +37,9 @@ lazy val root = (project in file("."))
   .settings(Defaults.itSettings)
   .settings(
     name := "topl-daml-broker",
-    publish / skip := true,
     libraryDependencies += scalaTest % Test,
     libraryDependencies += brambl,
     libraryDependencies += bramblCommon,
     libraryDependencies += toplDaml,
     libraryDependencies += slf4j
-  )
+  ).enablePlugins(GitVersioning)
