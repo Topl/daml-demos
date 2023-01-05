@@ -15,3 +15,8 @@ jobs:
         uses: olafurpg/setup-scala@v13
       - name: Deploy (release only)
         run: cd scala-daml-broker-app && sbt ci-release
+        env:
+          PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
+          PGP_SECRET: ${{ secrets.PGP_SECRET }}
+          SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
+          SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
