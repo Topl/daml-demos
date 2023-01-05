@@ -16,4 +16,4 @@ jobs:
       - name: Setup Scala
         uses: olafurpg/setup-scala@v13
       - name: Run unit tests
-        run: sbt scala-daml-broker-app && sbt test
+        run: cd scala-daml-broker-app && sbt test
