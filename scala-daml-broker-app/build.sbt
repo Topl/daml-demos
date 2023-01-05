@@ -7,8 +7,6 @@ ThisBuild / version := "0.1.0-SNAPSHOT"
 ThisBuild / organization := "co.topl"
 ThisBuild / organizationName := "Topl"
 
-skip in publish := true
-
 inThisBuild(List(
   organization := "co.topl",
   homepage := Some(url("https://github.com/Topl/daml-demos/tree/main/scala-daml-broker-app")),
@@ -37,6 +35,7 @@ lazy val root = (project in file("."))
   .settings(Defaults.itSettings)
   .settings(
     name := "topl-daml-broker",
+    publish / skip := true,
     libraryDependencies += scalaTest % Test,
     libraryDependencies += brambl,
     libraryDependencies += bramblCommon,
