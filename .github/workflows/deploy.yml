@@ -7,14 +7,11 @@ jobs:
   publish:
     runs-on: ubuntu-20.04
     steps:
-      - if: github.event.release
-        name: Checkout code
+      - name: Checkout code
         uses: actions/checkout@v3.0.2
         with:
           fetch-depth: 0
-      - if: github.event.release
-        name: Setup Scala
+      - name: Setup Scala
         uses: olafurpg/setup-scala@v13
-      - if: github.event.release
-        name: Deploy (release only)
+      - name: Deploy (release only)
         run: cd scala-daml-broker-app && sbt ci-release
