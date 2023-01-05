@@ -1,19 +1,22 @@
 name: deploy
 on:
-  pull_request:
-    branches: ['*']
+  release:
+    types: [created]
 
 jobs:
   publish:
     runs-on: ubuntu-20.04
     steps:
-      - name: Checkout code
+      - if: github.event.release
+        name: Checkout code
         uses: actions/checkout@v3.0.2
         with:
           fetch-depth: 0
-      - name: Setup Scala
+      - if: github.event.release
+        name: Setup Scala
         uses: olafurpg/setup-scala@v13
-      - name: Deploy (release only)
+      - if: github.event.release
+        name: Deploy (release only)
         run: cd scala-daml-broker-app && sbt ci-release
         env:
           PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
