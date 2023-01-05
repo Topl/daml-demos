@@ -2,12 +2,11 @@
 This repository contains a simple application that uses the [daml-dopl-lib](https://github.com/Topl/daml-bifrost-module). The broker application captures the contracts in the DAML participant node. It then performs the necessary operations on the Bifrost node. The results can be captured again by the client application.
 
 #### Prerequisites
-
-To build the application you first need to clone, compile and publish locally the [daml-dopl-lib](https://github.com/Topl/daml-bifrost-module) repository. The runtime requirements are: 
+ 
+ The runtime requirements are: 
 
 - a Bifrost node instance running locally.
 - a DAML participant node running.
-
 - a `keyfile.json` file.
 - the corresponding password for the `keyfile.json`.
 
