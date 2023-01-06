@@ -2,7 +2,6 @@ import Dependencies._
 
 
 lazy val publishSettings = List(
-  publish / skip := true,
   organization := "co.topl",
   homepage := Some(url("https://github.com/Topl/daml-demos/tree/main/scala-daml-broker-app")),
   licenses := List("MPL2.0" -> url("https://www.mozilla.org/en-US/MPL/2.0/")),
