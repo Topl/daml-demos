@@ -1,0 +1,4 @@
+dependencies:
+- name: daml-bifrost-module
+  pkgId: 736d18c04261b06fe79f88daa59a8b2a89645072aaf8b4a15ee67d9798925741
+  version: 0.1.0
