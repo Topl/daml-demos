@@ -1,5 +1,5 @@
 sdk-version: 2.3.2
-name: js-daml-app
+name: poll-daml-trigger
 version: 0.1.0
 source: daml
 dependencies:
@@ -9,10 +9,9 @@ dependencies:
 - daml-trigger
 data-dependencies:
 - daml-bifrost-module:0.1.0
+- js-daml-app:0.1.0
 start-navigator: true
 codegen:
   js:
     output-directory: ui/daml.js/js-daml-app-0.1.0
     npm-scope: daml.js/js-daml-app
-# Remove this line when running against a ledger without user management.
-init-script: Setup:initialize

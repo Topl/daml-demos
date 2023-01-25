@@ -1,0 +1,25 @@
+
+// start all local instances defined in the configuration file
+nodes.local start
+
+// Connect participant1 to mydomain using the connect macro.
+// The connect macro will inspect the domain configuration to find the correct URL and Port.
+// The macro is convenient for local testing, but obviously doesn't work in a distributed setup.
+participant1.domains.connect_local(mydomain)
+
+// we create the public participant
+val publicParty = participant1.ledger_api.parties.allocate("public", "Public Participant", Map());
+val aliceParty = participant1.ledger_api.parties.allocate("alice", "Alice", Map());
+val bobParty = participant1.ledger_api.parties.allocate("bob", "Bob", Map());
+val eveParty = participant1.ledger_api.parties.allocate("Eve", "Eve", Map());
+
+for {
+    publicPartyId <- com.digitalasset.canton.LfPartyId.fromString(publicParty.party)
+    _ <- Right(participant1.ledger_api.users.create("public", Set(publicPartyId), Some(publicPartyId), Set(publicPartyId), false, true))
+    alicePartyId <- com.digitalasset.canton.LfPartyId.fromString(aliceParty.party)
+    _ <- Right(participant1.ledger_api.users.create("alice", Set(alicePartyId), Some(alicePartyId), Set(publicPartyId), false, true))
+    bobPartyId <- com.digitalasset.canton.LfPartyId.fromString(bobParty.party)
+    _ <- Right(participant1.ledger_api.users.create("bob", Set(bobPartyId), Some(bobPartyId), Set(publicPartyId), false, true))
+    evePartyId <- com.digitalasset.canton.LfPartyId.fromString(eveParty.party)
+    _ <- Right(participant1.ledger_api.users.create("eve", Set(evePartyId), Some(evePartyId), Set(publicPartyId), false, true))
+} yield ()
