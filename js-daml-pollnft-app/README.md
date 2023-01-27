@@ -17,9 +17,9 @@ operations on the blockchain and triggers handle the contracts created by the br
 This demo was tested under Windows using Windows Subsystem for Linux (WSL) and ubuntu. The following software
 is required:
 
-- [Daml]: https://docs.daml.com
-- [Node.js]: https://nodejs.dev
-- The broker software (available [here](https://github.com/Topl/daml-demos/tree/main/scala-daml-broker-app)).
+- [Daml](https://docs.daml.com)
+- [Node.js](https://nodejs.dev)
+- The broker software (available [here](https://topl.github.io/bifrost-daml-broker/)).
 - Docker
 - Scala
 - SBT
@@ -100,7 +100,7 @@ Next you need to create a ledger on [Daml Hub], upload the files
 and `js-daml-app-ui.zip` (created by the `zip` command based on the result
 of `npm run-script build`).
 
-[Daml Hub]: https://hub.daml.com
+[Daml Hub](https://hub.daml.com)
 
 Once both files are uploaded, you need to tell Daml Hub to deploy them. A few
 seconds later, your website should be up and running.
