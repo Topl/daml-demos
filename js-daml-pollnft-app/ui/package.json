@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "@daml.js/js-daml-app": "file:daml.js/js-daml-app-0.1.0",
+    "@daml.js/js-daml-app": "file:daml.js/js-daml-app-0.1.0/js-daml-app-0.1.0/",
     "@daml/hub-react": "^1.0.0",
     "@daml/ledger": "2.3.2",
     "@daml/react": "2.3.2",

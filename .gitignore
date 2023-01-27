@@ -1,5 +1,7 @@
 .metals
 scala-daml-broker-app/keyfile.json
 *.swp
-.vscode/
+target/
 .bsp/
+.vscode/
+*.zip

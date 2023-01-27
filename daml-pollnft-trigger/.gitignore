@@ -1,0 +1,7 @@
+target/
+.bsp/
+.vscode/
+ui/
+.daml/
+log/
+*.log
