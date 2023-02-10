@@ -2,12 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import React, { useCallback, useEffect, useState } from 'react'
-import { Demo } from '@daml.js/js-daml-app/js-daml-app-0.1.0'
+// import { Demo } from '@daml.js/js-daml-app/js-daml-app-0.1.0/lib'
 import { PublicParty } from '../Credentials';
-import { Alert } from "react-bootstrap";
+// import { Alert } from "react-bootstrap";
 import { userContext } from './App';
 import AuthorizationView from './AuthorizationView';
-import appContainer from "./appContainer";
+// import appContainer from "./appContainer";
 import StateType from './AppState';
 import PrepareForDemoView from './PrepareForDemoView'
 import PollView from './PollView';
@@ -20,7 +20,7 @@ import WelcomeBackView from './WelcomeBackView'
  */
 const MainScreen: React.FC = ({ }) => {
   const party = userContext.useParty();
-  const publicParty = "party-4d2f70b5-3930-45bb-afa2-1fb853a8c2aa::12202d9c0ebe063ea76ea3107a2e1968b062020e26468bae7e06b67c4dba6624a2e3";
+  const publicParty = "useradmin::1220065f39473451cc112943720079a6557150e1082221ccd026d1de751cf86038da";
 
   const ledger = userContext.useLedger();
   const initialState: StateType = "InitialState"

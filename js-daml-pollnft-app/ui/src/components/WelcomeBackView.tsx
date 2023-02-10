@@ -5,7 +5,7 @@ import Button from 'react-bootstrap/Button';
 import Ledger from "@daml/ledger"
 import { Alert } from "react-bootstrap";
 import StateType from './AppState';
-import { Demo } from '@daml.js/js-daml-app/js-daml-app-0.1.0'
+import { Demo } from '@daml.js/js-daml-app/js-daml-app-0.1.0/lib'
 import Image from 'react-bootstrap/Image'
 
 type ResultViewProp = {

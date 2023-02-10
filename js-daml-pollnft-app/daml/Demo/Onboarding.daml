@@ -25,6 +25,16 @@ module Demo.Onboarding where
 
             maintainer key
 
+            choice ArchiveOperator_ConnectionRequest: ()
+                controller operator
+                    do
+                        return ()
+
+            choice ArchiveUser_ConnectionRequest: ()
+                controller user
+                do
+                    return ()
+
             choice ConnectionRequest_Accept: ContractId AcceptedConnection
                 controller operator
                 do
@@ -69,6 +79,17 @@ module Demo.Onboarding where
             key (user): Party
 
             maintainer key
+
+
+            choice ArchiveOperator_AcceptedConnection: ()
+                controller operator
+                    do
+                        return ()
+
+            choice ArchiveUser_AcceptedConnection: ()
+                controller user
+                do
+                    return ()
 
             choice AcceptedConnection_StartPoll: ContractId DemoPoll with
                 signedAssetMinting: SignedAssetMinting
