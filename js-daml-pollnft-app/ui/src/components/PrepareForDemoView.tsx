@@ -3,7 +3,7 @@ import React, { useCallback, useEffect } from "react"
 import appContainer from "./appContainer"
 import { Alert } from "react-bootstrap";
 import Ledger from "@daml/ledger"
-import { Demo } from '@daml.js/js-daml-app/js-daml-app-0.1.0'
+import { Demo } from '@daml.js/js-daml-app/js-daml-app-0.1.0/lib'
 import StateType from './AppState';
 
 type PrepareForDemoViewProp = {
