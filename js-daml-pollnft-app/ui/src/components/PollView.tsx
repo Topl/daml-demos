@@ -58,7 +58,7 @@ const PollView: React.FC<PollViewProp> = ({ walletAddress, ledger, party, setApp
                 timeout.current = window.setTimeout(checkDemoPollExists, 5000);
             }
         }
-    }, [])
+    }, [ waitingForPoll, setWaitingForPoll, ledger, party])
 
 
     useEffect(() => {

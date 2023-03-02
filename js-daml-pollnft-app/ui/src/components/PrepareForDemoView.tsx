@@ -10,7 +10,7 @@ type PrepareForDemoViewProp = {
     walletAddress: string
     ledger: Ledger,
     party: string,
-    publicParty: string,
+    publicParty: string|undefined,
     setAppState: (newState: StateType) => void
 }
 
@@ -24,31 +24,34 @@ const PrepareForDemoView: React.FC<PrepareForDemoViewProp> = ({ walletAddress, l
             await ledger.exerciseByKey(Demo.Poll.DemoPollProcessedResults.DemoPollProcessedResults_Reprocess, party, {});
             setAppState("WelcomeBackState");
         } else {
-            let connectionRequest = await ledger.fetchByKey(Demo.Onboarding.ConnectionRequest, party);
-            if (connectionRequest === null) {
-                const firtConnectionParams: Demo.Onboarding.ConnectionRequest = {
-                    user: party,
-                    operator: publicParty,
-                    operatorAddress: "AUANVY6RqbJtTnQS1AFTQBjXMFYDknhV8NEixHFLmeZynMxVbp64",
-                    userAddress: walletAddress,
-                    yesAddress: "AU9wBip3bEkFtCvamM8pTJZBr7mRvhv9JuLgozngnayP2i1HmGAT",
-                    noAddress: "AUAbb91jgG4SwFSKkfa6BrjWFkzr8eFxsC16GncnCA9WYbsgk7jW",
-                    changeAddress: "AUAJx3fy1YrrPb4SPNJjL1EMuLhpZWMz8guqYYkMXGSYUSNNTGTZ",
-                    assetCode: {
-                        version: "1",
-                        issuerAddress: "AUANVY6RqbJtTnQS1AFTQBjXMFYDknhV8NEixHFLmeZynMxVbp64",
-                        shortName: "Vote"
-                    }
-                };
-                connectionRequest = await ledger.create(Demo.Onboarding.ConnectionRequest, firtConnectionParams);
+            let onboardingList = await ledger.query(Demo.Onboarding.PollAppOnboarding, {})
+            let onboardingContract = onboardingList.at(0);
+            if (onboardingContract === undefined) {
+                console.log("Undefined onboarding?")
                 setAppState("PollState");
             } else {
-                setAppState("PollState");
+                console.log("Defined onboarding")
+                let contractId = onboardingContract.contractId;
+                let connectionRequest = await ledger.exercise(
+                    Demo.Onboarding.PollAppOnboarding.ConnectToApp, 
+                    contractId, {
+                        userParty: party,
+                        userAddress: walletAddress
+                    });
+                    if (connectionRequest !== null) {
+                        console.log("Connection request != null")
+                        setAppState("PollState");
+                    } else {
+                        console.log("Connection request == null")
+                        // TODO fix this
+                        setAppState("PollState");
+                    }
+                }
+                
             }
-        }
-    }, [])
+    }, [ ledger, party, walletAddress, setAppState])
 
-    useEffect(() => { checkConnectionRequest(); }, [])
+    useEffect(() => { checkConnectionRequest(); }, [ checkConnectionRequest])
 
     return appContainer(
         <Alert key='info' variant='info'>

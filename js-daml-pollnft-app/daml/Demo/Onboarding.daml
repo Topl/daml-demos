@@ -6,6 +6,43 @@ module Demo.Onboarding where
     import Topl.Utils
     import DA.List
 
+    template PollAppOnboarding
+        with
+            publicParty: Party
+            operator: Party
+            operatorAddress: Text
+            yesAddress: Text
+            noAddress: Text
+            changeAddress: Text
+            assetShortName: Text
+        where
+            signatory operator
+
+            observer publicParty
+
+            key (operator): Party
+
+            maintainer key
+
+            nonconsuming choice ConnectToApp: ContractId ConnectionRequest
+                with
+                    userParty: Party
+                    userAddress: Text
+                controller userParty
+                do
+                    let asset = AssetCode
+                                    with
+                                        issuerAddress = operatorAddress
+                                        version = 1
+                                        shortName = assetShortName
+                    create ConnectionRequest
+                        with
+                            user = userParty
+                            operatorAddress = operatorAddress
+                            assetCode = asset
+                            ..
+
+
     template ConnectionRequest
         with
             user: Party

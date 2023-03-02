@@ -1,5 +1,5 @@
 
-import React, { useCallback, useEffect, useState } from "react"
+import React, { useCallback, useEffect } from "react"
 
 import appContainer from "./appContainer";
 import { Alert } from "react-bootstrap";
@@ -27,17 +27,16 @@ const AuthorizationView: React.FC<AuthorizationViewProp> = ({ enabled, walletAdd
                 }
             }
         }
-    }, [enabled, walletAddress]);
+    }, [enabled, setAppState, setEnabled, setWalletAddress]);
 
     const revokeAuth = useCallback(async () => {
         await topl.revoke()
         setEnabled(undefined)
-    }, [])
+    }, [setEnabled])
 
 
-    useEffect(() => { checkAuthorization(); }, [enabled, walletAddress]);
-
-    if (enabled == undefined) {
+    useEffect(() => { checkAuthorization(); }, [enabled, walletAddress, checkAuthorization]);
+    if (enabled === undefined) {
         return appContainer(
             <Alert key='info' variant='info'>
                 Please proceed to authorize the app.

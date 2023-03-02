@@ -40,11 +40,11 @@ const WelcomeBackView: React.FC<ResultViewProp> = ({ ledger, party, setAppState 
         } else {
             timeout.current = window.setTimeout(checkBalances, 5000);
         }
-    }, [])
+    }, [ ledger, party ])
     const resetDemo = useCallback(async () => {
         await ledger.exerciseByKey(Demo.Poll.DemoPollProcessedResults.DemoPollProcessedResults_Archive, party, {});
         setAppState("InitialState")
-    }, [])
+    }, [ ledger, party, setAppState])
 
     useEffect(() => {
         checkBalances();

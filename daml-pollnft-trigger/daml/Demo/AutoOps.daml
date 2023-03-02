@@ -4,7 +4,7 @@ module Demo.AutoOps where
     import Topl.Asset
     import Topl.Utils
     import Demo.Poll
-    import DA.Optional (whenSome)
+    import DA.Optional (whenSome, fromSome)
     import DA.List
 
     import Demo.Onboarding
@@ -21,11 +21,13 @@ module Demo.AutoOps where
         initialize = pure ()
         updateState = \_ -> pure ()
         rule = \operator -> do
+            someOnboardingTuple <- T.queryContractKey @PollAppOnboarding operator
+            let onboarding = snd (fromSome someOnboardingTuple) 
             -- we first create the asset code
             let nft = AssetCode
                             with
                                 -- This address is fixed for the demo
-                                issuerAddress = "AUANVY6RqbJtTnQS1AFTQBjXMFYDknhV8NEixHFLmeZynMxVbp64"
+                                issuerAddress =  onboarding.operatorAddress
                                 version = 1
                                 shortName = "TOPLNFT"
             -- Test for poll results

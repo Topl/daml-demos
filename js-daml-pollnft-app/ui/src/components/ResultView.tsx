@@ -7,7 +7,6 @@ import { Alert } from "react-bootstrap";
 import StateType from './AppState';
 import { Demo } from '@daml.js/js-daml-app/js-daml-app-0.1.0/lib'
 import Image from 'react-bootstrap/Image'
-import { Bool } from "@daml/types";
 
 type ResultViewProp = {
     ledger: Ledger,
@@ -31,11 +30,11 @@ const ResultView: React.FC<ResultViewProp> = ({ ledger, party, setAppState }) =>
         } else {
             timeout.current = window.setTimeout(checkBalances, 5000);
         }
-    }, [])
+    }, [ ledger, party])
     const resetDemo = useCallback(async () => {
         await ledger.exerciseByKey(Demo.Poll.DemoPollProcessedResults.DemoPollProcessedResults_Archive, party, {});
         setAppState("InitialState")
-    }, [])
+    }, [ ledger, party, setAppState])
 
     useEffect(() => {
         checkBalances();
