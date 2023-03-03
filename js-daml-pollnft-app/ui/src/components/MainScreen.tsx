@@ -35,7 +35,7 @@ const MainScreen: React.FC = ({ }) => {
   if (typeof topl === "undefined") {
     return appContainer(<>
         <Alert key='danger' variant='danger'>
-            You need to setup your Ribn Wallet Extension to test this app.
+            You need to have the Ribn Wallet Extension installed to test this app.
         </Alert>
   </>);
   } else if (currentState === initialState) {
