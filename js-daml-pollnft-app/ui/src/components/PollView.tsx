@@ -3,7 +3,7 @@ import React, { useEffect, useCallback, useRef, useState } from "react"
 import appContainer from "./appContainer";
 import Button from 'react-bootstrap/Button';
 import Ledger from "@daml/ledger"
-import { Demo } from '@daml.js/js-daml-app/js-daml-app-0.1.0/lib'
+import { Demo } from "@daml.js/js-daml-app/js-daml-app-0.1.0"
 import StateType from './AppState';
 import { Alert } from "react-bootstrap";
 

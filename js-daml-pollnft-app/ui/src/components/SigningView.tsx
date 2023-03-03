@@ -4,7 +4,7 @@ import { Alert } from "react-bootstrap";
 import appContainer from "./appContainer";
 import StateType from './AppState';
 import Ledger from "@daml/ledger";
-import { Demo } from '@daml.js/js-daml-app/js-daml-app-0.1.0/lib';
+import { Demo } from "@daml.js/js-daml-app/js-daml-app-0.1.0"
 
 type SigningViewProp = {
     ledger: Ledger,

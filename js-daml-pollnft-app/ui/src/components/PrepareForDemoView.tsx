@@ -3,18 +3,19 @@ import React, { useCallback, useEffect } from "react"
 import appContainer from "./appContainer"
 import { Alert } from "react-bootstrap";
 import Ledger from "@daml/ledger"
-import { Demo } from '@daml.js/js-daml-app/js-daml-app-0.1.0/lib'
+import { Demo } from "@daml.js/js-daml-app/js-daml-app-0.1.0"
 import StateType from './AppState';
 
 type PrepareForDemoViewProp = {
     walletAddress: string
     ledger: Ledger,
+    publicLedger: Ledger,
     party: string,
     publicParty: string|undefined,
     setAppState: (newState: StateType) => void
 }
 
-const PrepareForDemoView: React.FC<PrepareForDemoViewProp> = ({ walletAddress, ledger, party, publicParty, setAppState }) => {
+const PrepareForDemoView: React.FC<PrepareForDemoViewProp> = ({ walletAddress, ledger, party, publicLedger, publicParty, setAppState }) => {
     const checkConnectionRequest = useCallback(async () => {
         let demoPoll = await ledger.fetchByKey(Demo.Poll.DemoPoll, party);
         let demoPollProcessedResults = await ledger.fetchByKey(Demo.Poll.DemoPollProcessedResults, party);
@@ -24,19 +25,23 @@ const PrepareForDemoView: React.FC<PrepareForDemoViewProp> = ({ walletAddress, l
             await ledger.exerciseByKey(Demo.Poll.DemoPollProcessedResults.DemoPollProcessedResults_Reprocess, party, {});
             setAppState("WelcomeBackState");
         } else {
-            let onboardingList = await ledger.query(Demo.Onboarding.PollAppOnboarding, {})
+            let onboardingList = await publicLedger.query(Demo.Onboarding.PollAppOnboarding, {})
             let onboardingContract = onboardingList.at(0);
             if (onboardingContract === undefined) {
                 console.log("Undefined onboarding?")
                 setAppState("PollState");
             } else {
                 console.log("Defined onboarding")
-                let contractId = onboardingContract.contractId;
-                let connectionRequest = await ledger.exercise(
-                    Demo.Onboarding.PollAppOnboarding.ConnectToApp, 
-                    contractId, {
-                        userParty: party,
-                        userAddress: walletAddress
+                let connectionRequest = await ledger.create(
+                    Demo.Onboarding.ConnectionRequest, 
+                    {
+                        user: party,
+                        operator: onboardingContract.payload.operator,
+                        userAddress: walletAddress,
+                        operatorAddress: onboardingContract.payload.operatorAddress,
+                        yesAddress: onboardingContract.payload.yesAddress,
+                        noAddress: onboardingContract.payload.noAddress,
+                        changeAddress: onboardingContract.payload.changeAddress
                     });
                     if (connectionRequest !== null) {
                         console.log("Connection request != null")
@@ -49,7 +54,7 @@ const PrepareForDemoView: React.FC<PrepareForDemoViewProp> = ({ walletAddress, l
                 }
                 
             }
-    }, [ ledger, party, walletAddress, setAppState])
+    }, [ ledger, party, walletAddress, setAppState, publicLedger])
 
     useEffect(() => { checkConnectionRequest(); }, [ checkConnectionRequest])
 

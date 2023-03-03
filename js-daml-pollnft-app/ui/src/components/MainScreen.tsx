@@ -9,7 +9,7 @@ import PrepareForDemoView from './PrepareForDemoView'
 import PollView from './PollView';
 import SigningView from './SigningView';
 import ResultView from './ResultView';
-import WelcomeBackView from './WelcomeBackView'
+import WelcomeBackView from './WelcomeBackView';
 import appContainer from "./appContainer";
 import { Alert } from "react-bootstrap";
 
@@ -20,13 +20,13 @@ const MainScreen: React.FC = ({ }) => {
   const party = userContext.useParty();
   const publicParty = publicContext.useParty();
   const ledger = userContext.useLedger();
+  const publicLedger = publicContext.useLedger();
   
   const initialState: StateType = "InitialState"
   const authorizedState: StateType = "AuthorizedState"
   const pollState: StateType = "PollState"
   const waitingForSignatureState: StateType = "WaitingForSignatureState"
   const welcomeBackState: StateType = "WelcomeBackState"
-  const noWalletState: StateType = "NoWalletState"
 
   const [enabled, setEnabled] = useState<undefined | boolean>(undefined)
   const [walletAddress, setWalletAddress] = useState<undefined | string>(undefined)
@@ -41,7 +41,7 @@ const MainScreen: React.FC = ({ }) => {
   } else if (currentState === initialState) {
     return <AuthorizationView enabled={enabled} walletAddress={walletAddress} setEnabled={setEnabled} setWalletAddress={setWalletAddress} setAppState={setCurrentState} />
   } else if (currentState === authorizedState) {
-    return <PrepareForDemoView walletAddress={String(walletAddress)} ledger={ledger} party={party} publicParty={publicParty} setAppState={setCurrentState} />;
+    return <PrepareForDemoView walletAddress={String(walletAddress)} publicLedger={publicLedger} ledger={ledger} party={party} publicParty={publicParty} setAppState={setCurrentState} />;
   } else if (currentState === pollState) {
     return <PollView walletAddress={String(walletAddress)} ledger={ledger} party={party} setAppState={setCurrentState} />
   } else if (currentState === waitingForSignatureState) {

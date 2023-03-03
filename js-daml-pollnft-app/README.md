@@ -18,11 +18,11 @@ This demo was tested under Windows using Windows Subsystem for Linux (WSL) and u
 is required:
 
 - [Daml](https://docs.daml.com)
-- [Node.js](https://nodejs.dev)
+- [Node.js 16.x](https://nodejs.dev)
 - The broker software (available [here](https://topl.github.io/bifrost-daml-broker/)).
 - Docker
-- Scala
-- SBT
+- [Coursier](https://get-coursier.io/docs/cli-installation).- A simple command line tool (CLI) to
+to run Java applications without any setup. It is very easy to install.
 - JVM
 - The Ribn Chrome extension
 - A locally published version of the [daml-bifrost-module](https://github.com/Topl/daml-bifrost-module).
@@ -55,8 +55,7 @@ daml json-api --config json-api-app.conf
 Next, start the broker. 
 
 ```bash
-cd ../scala-daml-broker-app
-sbt 'run 127.0.0.1 6865 keyfile.json test'
+cs launch co.topl:bifrost-daml-broker_2.13:1.0.0.beta-2 -- -n private -u http://127.0.0.1:9085 -h 127.0.0.1 -p 6865  -k keyfile.json -w test -o $OPERATOR_PARTY -m false
 ```
 
 Next, start the local bifrost node using the following docker command:
@@ -88,10 +87,9 @@ To build everything from scratch:
 
 ```bash
 daml build
-daml codegen js .daml/dist/js-daml-app-0.1.0.dar -o ui/daml.js
-cd ui
+daml codegen js
 npm install
-npm run-script build
+npm run build
 zip -r ../js-daml-app-ui.zip build
 ```
 
