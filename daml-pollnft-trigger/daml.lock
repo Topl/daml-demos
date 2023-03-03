@@ -3,5 +3,5 @@ dependencies:
   pkgId: 736d18c04261b06fe79f88daa59a8b2a89645072aaf8b4a15ee67d9798925741
   version: 0.1.0
 - name: js-daml-app
-  pkgId: de020610455cd19106574c05594cad6e67dab8e79174a73de004b8e3ad64f4c9
+  pkgId: 204a5c9baa911bf9c1a96573e20b2100c45d14ffc9fe771f3f628de334045692
   version: 0.1.0

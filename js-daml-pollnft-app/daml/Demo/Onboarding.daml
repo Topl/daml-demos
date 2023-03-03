@@ -6,6 +6,26 @@ module Demo.Onboarding where
     import Topl.Utils
     import DA.List
 
+
+    template PollAppOnboarding
+        with
+            publicParty: Party
+            operator: Party
+            operatorAddress: Text
+            yesAddress: Text
+            noAddress: Text
+            changeAddress: Text
+            assetShortName: Text
+        where
+            signatory operator
+
+            observer publicParty
+
+            key (operator): Party
+
+            maintainer key
+
+
     template ConnectionRequest
         with
             user: Party
@@ -15,7 +35,6 @@ module Demo.Onboarding where
             yesAddress : Text
             noAddress : Text
             changeAddress : Text
-            assetCode : AssetCode
         where
             signatory user
 
@@ -58,6 +77,7 @@ module Demo.Onboarding where
                             ..
                     create AcceptedConnection 
                         with
+                            assetCode = asset
                             ..
 
     template AcceptedConnection

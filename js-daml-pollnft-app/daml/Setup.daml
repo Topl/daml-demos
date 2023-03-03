@@ -2,30 +2,42 @@ module Setup where
 
 import Daml.Script
 import Topl.Onboarding
+import Demo.Onboarding
 import qualified DA.Text as T
 
 import DA.Optional (fromSomeNote)
 
 initialize : Script [Party]
 initialize = do
-      operator <- createPublic
+      public <- createPublic
+      operator <- allocateParty "Operator"
+      operatorId <- validateUserId "operator"
       alice <- allocateParty "Alice"
       aliceId <- validateUserId "alice"
       bob <- allocateParty "Bob"
       bobId <- validateUserId "bob"
       eve <- allocateParty "Eve"
       eveId <- validateUserId "eve"
-      debug ("operator: " <> partyToText operator)
+      debug ("Operator: " <> partyToText operator)
+      debug ("Alice: " <> partyToText alice)
+      let operatorAddress = "AUANVY6RqbJtTnQS1AFTQBjXMFYDknhV8NEixHFLmeZynMxVbp64"
+      let changeAddress = operatorAddress
+      let yesAddress = "AUAstWhFRBCtUbukbZNEfkH6hDzHr5JCn4j5ALZ64Gq6xbdytJVi"
+      let noAddress = "AUAS4b2p6GBSgC5SvUXenmFCx71GbZAPe9S9st2NmtRVttwSanNG"
+      let assetShortName = "Vote"
       operatorCid <- submit operator do
-        createCmd Operator with operator = operator, address = "AUANVY6RqbJtTnQS1AFTQBjXMFYDknhV8NEixHFLmeZynMxVbp64"
+        createCmd Operator with operator = operator, address = operatorAddress
       userInvitationCid <- submit operator do
         exerciseCmd operatorCid  Operator_InviteUser 
           with user = operator
+      submit operator do
+        createCmd PollAppOnboarding with publicParty = public, operator = operator, ..
       aliceUserCid <- submit operator do
         exerciseCmd userInvitationCid UserInvitation_Accept
-      createUser (Daml.Script.User aliceId (Some alice)) [(CanActAs alice), (CanReadAs operator)]
-      createUser (Daml.Script.User bobId (Some bob)) [CanActAs bob, CanReadAs operator]
-      createUser (Daml.Script.User eveId (Some eve)) [CanActAs eve, CanReadAs operator]
+      createUser (Daml.Script.User aliceId (Some alice)) [(CanActAs alice), (CanReadAs public)]
+      createUser (Daml.Script.User bobId (Some bob)) [CanActAs bob, CanReadAs public]
+      createUser (Daml.Script.User eveId (Some eve)) [CanActAs eve, CanReadAs public]
+      createUser (Daml.Script.User operatorId (Some operator)) [CanActAs operator, CanReadAs public]
       pure []
 
 createPublic : Script Party

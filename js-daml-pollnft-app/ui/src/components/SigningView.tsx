@@ -1,10 +1,10 @@
 
-import React, { useEffect, useCallback, useRef, useState } from "react"
+import React, { useEffect, useCallback, useRef } from "react"
 import { Alert } from "react-bootstrap";
 import appContainer from "./appContainer";
 import StateType from './AppState';
 import Ledger from "@daml/ledger";
-import { Demo } from '@daml.js/js-daml-app/js-daml-app-0.1.0/lib';
+import { Demo } from "@daml.js/js-daml-app/js-daml-app-0.1.0"
 
 type SigningViewProp = {
     ledger: Ledger,
@@ -35,7 +35,7 @@ const SigningView: React.FC<SigningViewProp> = ({ ledger, party, setAppState }) 
         } else {
             timeout.current = window.setTimeout(checkDemoSignRequest, 5000);
         }
-    }, [])
+    }, [ ledger, party, setAppState ])
     useEffect(() => {
         checkDemoSignRequest();
         return () => {

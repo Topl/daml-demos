@@ -6,7 +6,7 @@ import LoginScreen from "./LoginScreen";
 import MainScreen from "./MainScreen";
 import { createLedgerContext } from "@daml/react";
 import DamlHub, {
-  damlHubLogout,
+  // damlHubLogout, FIXME
   isRunningOnHub,
   usePublicParty,
   usePublicToken,

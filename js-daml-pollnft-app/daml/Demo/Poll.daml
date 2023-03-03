@@ -74,6 +74,11 @@ module Demo.Poll where
 
             maintainer key
 
+            choice DemoPollCompleted_Archive: ()
+                controller operator
+                do
+                    return ()
+
             choice DemoPollCompleted_AskForBalance: ()
                 controller operator
                 do
@@ -115,6 +120,11 @@ module Demo.Poll where
             key (participant) : (Party)
 
             maintainer key
+
+            choice DemoPollShowResults_Archive: ()
+                controller operator
+                do
+                    return ()
 
             nonconsuming choice DemoPollShowResults_CaptureNFTAssetMinting: ContractId AssetBalanceRequest
                 with
