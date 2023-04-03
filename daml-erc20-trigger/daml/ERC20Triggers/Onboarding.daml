@@ -1,0 +1,20 @@
+module ERC20Triggers.Onboarding where
+
+    import qualified Daml.Trigger as T
+    import Standard.ERC20FixedSupply
+
+    initSession : T.Trigger ()
+    initSession = T.Trigger with
+        initialize = pure ()
+        updateState = \_ -> pure ()
+        rule = \operator -> do
+            createTuples <- T.query @ERC20FixedSupplyMinterCreate
+            xxx <- mapA 
+                (\x -> do
+                    let 
+                        contractId = fst x 
+                    T.dedupExercise contractId ERC20FixedSupplyMinterCreate_Create)
+                createTuples 
+            pure ()
+        registeredTemplates = T.AllInDar
+        heartbeat = None

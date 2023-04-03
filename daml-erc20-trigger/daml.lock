@@ -1,0 +1,7 @@
+dependencies:
+- name: daml-bifrost-module
+  pkgId: b6c9c46c901bcabf5aa3b4f7c95663835bdfc93f5231dc7b4340172cd63fb12f
+  version: 0.2.0
+- name: js-daml-erc20-app
+  pkgId: f358c51445f1941182bb2df8591738aeff236c3b2ce9df77825752a457fa4488
+  version: 0.1.0

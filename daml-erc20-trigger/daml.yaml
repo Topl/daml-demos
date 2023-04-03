@@ -1,0 +1,13 @@
+sdk-version: 2.6.0
+name: daml-erc20-trigger
+version: 0.1.0
+source: daml
+dependencies:
+- daml-prim
+- daml-stdlib
+- daml-script
+- daml-trigger
+data-dependencies:
+- daml-bifrost-module:0.2.0
+- js-daml-erc20-app:0.1.0
+start-navigator: false
