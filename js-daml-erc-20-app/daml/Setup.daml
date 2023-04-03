@@ -3,6 +3,7 @@ module Setup where
 import DA.Optional (fromSomeNote)
 import qualified DA.Text as T
 import Daml.Script
+import ERC20AppConfig
 
 -- | A record containing all the parties that we will use in our script
 data Parties = Parties
@@ -10,6 +11,7 @@ data Parties = Parties
     alice : Party
     bob : Party
     charlie: Party
+    operator: Party
     public: Party
 
 -- | A test user for the create-daml-app network.
@@ -32,11 +34,17 @@ setup = do
   -- should be hosted on.
   alice <- createTestUser $ TestUser "Alice" public defaultParticipant
   bob <- createTestUser $ TestUser "Bob" public defaultParticipant
+  operator <- createTestUser $ TestUser "Operator" public defaultParticipant
   charlie <- createTestUser $ TestUser "Charlie" public defaultParticipant
+  submit operator do
+   createCmd ERC20AppConfig with 
+       operatorAddress = "AU9avKWiVVPKyU9LoMqDpduS4knoLDMdPEK54qKDNBpdnAMwQZcS"
+       ..
   pure $ Parties with
     alice
     bob
     charlie
+    operator
     public
 
 -- | Create a test user.

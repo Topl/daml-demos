@@ -1,4 +1,4 @@
-// Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+// Copyright (c) 2023 Topl LLC. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 import React, { useCallback, useState } from "react";
@@ -16,10 +16,10 @@ import Container from 'react-bootstrap/Container';
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
 import Card from 'react-bootstrap/Card';
-import { Navigate, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 type Props = {
-  onLogin: (credentials: Credentials) => void,
+  onLogin: (credentials: Credentials) => Promise<void>,
   credentials: Credentials | undefined;
 };
 
@@ -29,11 +29,11 @@ type Props = {
 const LoginScreen: React.FC<Props> = ({ onLogin, credentials }) => {
   const navigate = useNavigate();
   const login = useCallback(
-    async (credentials: Credentials) => {
+    (credentials: Credentials) => {
       onLogin(credentials);
       navigate("/");
     },
-    [onLogin],
+    [onLogin, navigate],
   );
 
   const wrap: (c: JSX.Element) => JSX.Element = component => (
@@ -57,7 +57,6 @@ const LoginScreen: React.FC<Props> = ({ onLogin, credentials }) => {
 
   const InsecureLogin: React.FC<{ auth: Insecure }> = ({ auth }) => {
     const [username, setUsername] = React.useState("");
-    const navigate = useNavigate();
     const handleLogin = async (event: React.FormEvent) => {
       event.preventDefault();
       const token = auth.makeToken(username);

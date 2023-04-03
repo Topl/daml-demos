@@ -1,0 +1,96 @@
+module Standard.ERC20FixedSupply where
+
+import Standard.ERC20
+import Topl.Asset
+import Topl.Utils
+import DA.List
+import DA.Map qualified as M
+
+template ERC20FixedSupplyMinterCreate with
+    operatorAddress : Text
+    issuer: Party
+    operator: Party
+    public : Party
+        where 
+            signatory issuer
+
+            observer operator
+
+            key issuer : Party
+            maintainer key
+
+            nonconsuming choice ERC20FixedSupplyMinterCreate_Create : ContractId ERC20FixedSupplyMinter
+                controller operator
+                do
+                    create ERC20FixedSupplyMinter with ..
+
+template ERC20FixedSupplyMinter with
+    operator: Party
+    operatorAddress : Text
+    issuer: Party
+    public : Party
+        where
+            signatory operator, issuer
+
+            key (operator, issuer) : (Party, Party)
+            maintainer key._1
+
+            nonconsuming choice Issue : ContractId ERC20FixedSupplyRequest
+                with
+                    requestId : Text
+                    minterAddress : Text
+                    name : Optional Text
+                    symbol : Text
+                    totalSupply : Int
+                controller issuer
+                do
+                    -- this will launch the asset minting process
+                    create UniqueAssetMintingRequest with
+                        requestor = issuer
+                        to = [ (minterAddress, totalSupply) ]
+                        quantity = totalSupply
+                        someCommitRoot = None
+                        someMetadata = None
+                        shortName = symbol
+                        fee = 100
+                        ..
+                    -- this will be used later to capture the UniqueAssetMintingRequest
+                    -- and create the ERC20 contract
+                    create ERC20FixedSupplyRequest with ..
+
+template ERC20FixedSupplyRequest with
+            requestId : Text
+            issuer: Party
+            operator: Party
+            operatorAddress: Text
+            public : Party
+            name : Optional Text
+        where
+            signatory issuer, operator
+
+            choice Tokens_To_ERC_20: ContractId ERC20
+                controller operator
+                do
+                    (assetMintingCid, assetMinting) <- fetchByKey @SignedAssetMinting (operator, requestId)
+                    assert $ isConfirmed assetMinting.sendStatus
+                    let minterAddress = fst $ head assetMinting.to
+                    let issuerAddress = head assetMinting.from
+                    erc20 <- create ERC20 with
+                       issuer = assetMinting.requestor
+                       public = public
+                       symbol = assetMinting.assetCode.shortName
+                       totalSupply = assetMinting.quantity
+                       assetCode = assetMinting.assetCode
+                       ..
+                    exercise assetMintingCid SignedAssetMinting_Archive
+                    -- we create the initial account where the tokens are
+                    -- stored
+                    create Account with 
+                        owner = issuer
+                        symbol = assetMinting.assetCode.shortName
+                        balance = assetMinting.quantity
+                        address = minterAddress
+                        allowances = M.empty
+                        someTransferringTo = None
+                        ..
+                    return erc20

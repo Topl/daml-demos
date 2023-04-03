@@ -1,0 +1,4 @@
+module LibraryModules where
+    import Standard.ERC20()
+    import Standard.ERC20FixedSupply()
+    import ERC20AppConfig()

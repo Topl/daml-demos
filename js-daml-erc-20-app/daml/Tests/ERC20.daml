@@ -1,0 +1,368 @@
+module Tests.ERC20 where
+
+    import Standard.ERC20
+    import Standard.ERC20FixedSupply
+    import Daml.Script
+    import Tests.Util
+    import Topl.Asset
+    import Topl.Utils
+    import DA.Optional
+    import DA.Assert
+
+    util_create_parties: Party -> Script ((User, Text), (User, Text), (User, Text))
+    util_create_parties publicM = script do
+        alice <- getOrCreateUser "Alice" $ Some publicM
+        let aliceAddress = "AUAZ51ZhQhhHsMVjUNoKNL3DVwJ5ydq3Mko9eGB5GqGohgpCDXDM"
+        bob <- getOrCreateUser "Bob" $ Some publicM
+        let bobAddress = "AU9nPPtEv1U25nF1TGJFQecU8phhgFZhJHFxBPGKqynHcgFUSD9g"
+        eve <- getOrCreateUser "Eve" $ Some publicM
+        let eveAddress = "AUA3s5ruiEq6TKpbV5d8hLqUHAQhrkoL1mnuj1WAGm13hpXBmTQL"
+        return ((alice, aliceAddress), (bob, bobAddress), (eve, eveAddress))
+
+    util_create_operator = script do
+        public <- createPublic
+        operator <- getOrCreateUser "Operator" (Some public)
+        let operatorAddress = "AUAsTFYGip2QNigMGrAxiJAn3MaktMyUFqeJGRuvKmM6G7jE5EQX"
+        return (operator, public, operatorAddress)
+
+    util_create_fixed_supply_minter = script do
+        (operatorUser, public, operatorAddress)  <- util_create_operator
+        ((aliceUser, aliceAddress), _, _) <- util_create_parties public
+        let operator = getPrimaryParty operatorUser
+        createContract <- submitUser aliceUser.userId do
+            createCmd ERC20FixedSupplyMinterCreate with issuer = getPrimaryParty aliceUser, ..
+        submit operator do
+            exerciseCmd createContract ERC20FixedSupplyMinterCreate_Create
+
+
+
+    create_erc20_without_authorization = script do
+        (operatorUser, public, operatorAddress) <- util_create_operator
+        ((aliceUser, aliceAddress), _, _) <- util_create_parties public
+        let issuer = getPrimaryParty aliceUser
+        let operator = getPrimaryParty operatorUser
+        -- this must fail because you need authorization from the operator
+        let assetCode = AssetCode with 
+                            issuerAddress = operatorAddress
+                            version = 1
+                            shortName = "USDTOPL"
+        submitMustFail issuer do
+            createCmd ERC20 with 
+                name = None
+                operator = fromSome operatorUser.primaryParty
+                symbol = "USDTOPL"
+                totalSupply = 10
+                ..
+    create_erc20 = script do
+        (operatorUser, public, _) <- util_create_operator
+        ((aliceUser, aliceAddress), _, _) <- util_create_parties public
+        let issuer = getPrimaryParty aliceUser
+        let operator = getPrimaryParty operatorUser
+        fixedSupplyMinter <- util_create_fixed_supply_minter
+        request <- submitUser aliceUser.userId do
+            exerciseCmd fixedSupplyMinter Issue with
+                    requestId = "1"
+                    symbol = "USDTOPL"
+                    totalSupply = 10
+                    name = None
+                    minterAddress = "AUAZ51ZhQhhHsMVjUNoKNL3DVwJ5ydq3Mko9eGB5GqGohgpCDXDM"
+                    ..
+        someMintingRequest <- queryContractKey @UniqueAssetMintingRequest operator (operator, "1")
+        signedAssetMintingCid <- (\x ->   
+                    submit operator do
+                        exerciseCmd  (fst x) UniqueAssetMintingRequest_Accept with 
+                            txToSign = "xxx"
+                            signedMintTx = "yyy"
+                            issuerAddress = "issuerAddress"
+                            from = [ "issuerAddress" ]
+                            boxNonce = 1) 
+            (fromSome someMintingRequest)  
+        nowTime <- getTime      
+        signedAssetMintingCid <- submit operator do 
+            exerciseCmd signedAssetMintingCid SignedAssetMinting_Sent with
+                newSendStatus = Sent with when = nowTime, from = "", txId = "2"
+        submit operator do 
+            exerciseCmd signedAssetMintingCid SignedAssetMinting_Confirm with
+                txId = "txId"
+                depth = 1
+        submitUser operatorUser.userId do
+            exerciseCmd request Tokens_To_ERC_20
+
+    test_total_supply = script do
+        publicUser <- getOrCreateUser "Public" None
+        -- we can reuse previous tests, this one creates two users in an organization
+        ((aliceUser, _), _, _) <- util_create_parties $ getPrimaryParty publicUser
+        erc20 <- create_erc20
+        let aliceParty = getPrimaryParty aliceUser
+        response <- submitUser aliceUser.userId do
+            exerciseCmd erc20 ERC20_TotalSupply with requestor = aliceParty
+        someResponse <- queryContractId @TotalSuply_Response aliceParty response
+        (fromSome someResponse).totalSupply === 10
+
+    test_balance_of_non_existing_account = script do
+        publicUser <- getOrCreateUser "Public" None
+        (_, (bobUser, bobAddress), _) <- util_create_parties $ getPrimaryParty publicUser
+        erc20 <- create_erc20
+        let bobParty = getPrimaryParty bobUser
+        response <- submitUser bobUser.userId do
+            exerciseCmd erc20 ERC20_BalanceOf with requestor = bobParty, address = bobAddress
+        someResponse <- queryContractId @BalanceOf_Response bobParty response
+        (fromSome someResponse).balance === 0
+
+    test_balance_of_existing_account = script do
+        publicUser <- getOrCreateUser "Public" None
+        ((aliceUser, aliceAddress), _, _) <- util_create_parties $ getPrimaryParty publicUser
+        erc20 <- create_erc20
+        let aliceParty = getPrimaryParty aliceUser
+        responseCid <- submitUser aliceUser.userId do
+            exerciseCmd erc20 ERC20_BalanceOf with requestor = aliceParty, address = aliceAddress
+        response <- queryContractId @BalanceOf_Response aliceParty responseCid
+        (fromSome response).balance === 10
+        submit aliceParty do
+            exerciseCmd responseCid BalanceOf_Response_Archive_Requestor
+        return erc20
+
+
+    test_transfer_to_unknown_account = script do
+        erc20 <- test_balance_of_existing_account
+        publicUser <- getOrCreateUser "Public" None
+        ((aliceUser, aliceAddress), (bobUser, bobAddress), _) <- util_create_parties $ getPrimaryParty publicUser
+        let aliceParty = getPrimaryParty aliceUser
+        transferRequest <- submitUser aliceUser.userId do
+            exerciseCmd erc20 ERC20_Transfer with 
+                requestId = "2"
+                requestor = aliceParty
+                from = aliceAddress
+                to = bobAddress
+                value = 5
+        -- now the operator needs to transform the request into a signed request
+        (operatorUser, public, _) <- util_create_operator
+        let operator = getPrimaryParty operatorUser
+        unsignedTransferRequest <- submit operator do
+            exerciseCmd transferRequest ForgetfulAssetTransferRequest_Accept with  
+                txToSign = "txToSign"
+                msgToSign = "msgToSign"
+                newBoxNonce = 1
+        nowTime <- getTime     
+        signedTransferCid <- submit operator do
+            exerciseCmd unsignedTransferRequest UnsignedAssetTransfer_Sign with
+                    signedTx = "signedTx"
+        signedTransferCid <- submit operator do 
+            exerciseCmd signedTransferCid SignedAssetTransfer_Sent with
+                newSendStatus = Sent with 
+                        when = nowTime
+                        from = ""
+                        txId = "2"
+        submit operator do 
+            exerciseCmd signedTransferCid SignedAssetTransfer_Confirm with
+                txId = "txId"
+                depth = 1
+        someTransferInProgress <- queryContractKey @AccountTransferInProgress operator (operator, "2")
+        transferEvent <-  (\x -> do
+                        submit operator do
+                        exerciseCmd (fst x) TransferInProgress_Complete)
+                    (fromSome someTransferInProgress)
+        return erc20
+
+    test_transfer_from_unknown_account = script do
+        erc20 <- test_transfer_to_unknown_account
+        publicUser <- getOrCreateUser "Public" None
+        ((aliceUser, aliceAddress), (bobUser, bobAddress), _) <- util_create_parties $ getPrimaryParty publicUser
+        let bobParty = getPrimaryParty bobUser
+        (operatorUser, public, _) <- util_create_operator
+        let operator = getPrimaryParty operatorUser
+        transferRequest <- submitUser bobUser.userId do
+            exerciseCmd erc20 ERC20_Transfer with 
+                requestId = "3"
+                requestor = bobParty
+                from = bobAddress
+                to = aliceAddress
+                value = 5
+        unsignedTransferRequest <- submit operator do
+            exerciseCmd transferRequest ForgetfulAssetTransferRequest_Accept with  
+                txToSign = "txToSign"
+                msgToSign = "msgToSign"
+                newBoxNonce = 1
+        nowTime <- getTime     
+        signedTransferCid <- submit operator do
+            exerciseCmd unsignedTransferRequest UnsignedAssetTransfer_Sign with
+                    signedTx = "signedTx"
+        signedTransferCid <- submit operator do 
+            exerciseCmd signedTransferCid SignedAssetTransfer_Sent with
+                newSendStatus = Sent with 
+                        when = nowTime
+                        from = ""
+                        txId = "2"
+        submit operator do 
+            exerciseCmd signedTransferCid SignedAssetTransfer_Confirm with
+                txId = "txId"
+                depth = 1
+        someTransferInProgress <- queryContractKey @UnclaimedAccountTransferInProgress operator (operator, "3")
+        transferEvent <-  (\x -> do
+                        submit operator do
+                        exerciseCmd (fst x) UnclaimedTransferInProgress_Complete)
+                    (fromSome someTransferInProgress)
+        return erc20
+    test_transfer_from_known_to_known = script do
+        erc20 <- test_transfer_from_unknown_account
+        publicUser <- getOrCreateUser "Public" None
+        ((aliceUser, aliceAddress), (bobUser, bobAddress), _) <- util_create_parties $ getPrimaryParty publicUser
+        let aliceParty = getPrimaryParty aliceUser
+        (operatorUser, public, _) <- util_create_operator
+        let operator = getPrimaryParty operatorUser
+        transferRequest <- submitUser aliceUser.userId do
+            exerciseCmd erc20 ERC20_Transfer with 
+                requestId = "4"
+                requestor = aliceParty
+                from = aliceAddress
+                to = bobAddress
+                value = 5
+        unsignedTransferRequest <- submit operator do
+            exerciseCmd transferRequest ForgetfulAssetTransferRequest_Accept with  
+                txToSign = "txToSign"
+                msgToSign = "msgToSign"
+                newBoxNonce = 1
+        nowTime <- getTime     
+        signedTransferCid <- submit operator do
+            exerciseCmd unsignedTransferRequest UnsignedAssetTransfer_Sign with
+                    signedTx = "signedTx"
+        signedTransferCid <- submit operator do 
+            exerciseCmd signedTransferCid SignedAssetTransfer_Sent with
+                newSendStatus = Sent with 
+                        when = nowTime
+                        from = ""
+                        txId = "2"
+        submit operator do 
+            exerciseCmd signedTransferCid SignedAssetTransfer_Confirm with
+                txId = "txId"
+                depth = 1
+        someTransferInProgress <- queryContractKey @AccountTransferInProgress operator (operator, "4")
+        transferEvent <-  (\x -> do
+                        submit operator do
+                        exerciseCmd (fst x) TransferInProgress_Complete)
+                    (fromSome someTransferInProgress)
+        return erc20
+
+    test_approve = script do
+        erc20 <- test_transfer_from_known_to_known
+        publicUser <- getOrCreateUser "Public" None
+        ((aliceUser, aliceAddress), (bobUser, bobAddress), _) <- util_create_parties $ getPrimaryParty publicUser
+        let aliceParty = getPrimaryParty aliceUser
+        let bobParty = getPrimaryParty bobUser
+        (operatorUser, public, _) <- util_create_operator
+        let operator = getPrimaryParty operatorUser
+        submitUser aliceUser.userId do
+            exerciseCmd erc20 ERC20_Approve with 
+                requestId = "5"
+                requestor = aliceParty
+                ownerAddress = aliceAddress
+                spender = bobParty
+                spenderAddress = bobAddress
+                value = 2
+        someMintingRequest <- queryContractKey @UniqueAssetMintingRequest operator (operator, "5")
+        signedAssetMintingCid <- (\x ->   
+                    submit operator do
+                        exerciseCmd  (fst x) UniqueAssetMintingRequest_Accept with 
+                            txToSign = "xxx"
+                            signedMintTx = "yyy"
+                            issuerAddress = "someAddress"
+                            from = [ "someNewAddress" ]
+                            boxNonce = 1) 
+            (fromSome someMintingRequest)  
+        nowTime <- getTime      
+        signedAssetMintingCid <- submit operator do 
+            exerciseCmd signedAssetMintingCid SignedAssetMinting_Sent with
+                newSendStatus = Sent with when = nowTime, from = "", txId = "2"
+        submit operator do 
+            exerciseCmd signedAssetMintingCid SignedAssetMinting_Confirm with
+                txId = "txId"
+                depth = 1
+        someTransferRequest <- queryContractKey @ForgetfulAssetTransferRequest operator (operator, "5")
+        unsignedTransferRequest <- submit operator do
+            exerciseCmd (fst $ fromSome someTransferRequest) ForgetfulAssetTransferRequest_Accept with  
+                txToSign = "txToSign"
+                msgToSign = "msgToSign"
+                newBoxNonce = 1
+        nowTime <- getTime     
+        signedTransferCid <- submit operator do
+            exerciseCmd unsignedTransferRequest UnsignedAssetTransfer_Sign with
+                    signedTx = "signedTx"
+        signedTransferCid <- submit operator do 
+            exerciseCmd signedTransferCid SignedAssetTransfer_Sent with
+                newSendStatus = Sent with 
+                        when = nowTime
+                        from = ""
+                        txId = "2"
+        someApprovalInProgress <- queryContractKey @ApprovalTransferInProgress operator (operator, "5")
+        transferEvent <-  (\x -> do
+                        submit operator do
+                        exerciseCmd (fst x) ApprovalTransferInProgress_Complete)
+                    (fromSome someApprovalInProgress)
+        return erc20
+
+
+
+    test_transfer_from_allowance = script do
+        -- we have bob send tokens from alice to eve
+        erc20 <- test_approve
+        publicUser <- getOrCreateUser "Public" None
+        ((aliceUser, aliceAddress), (bobUser, bobAddress), (eveUser, eveAddress)) <- util_create_parties $ getPrimaryParty publicUser
+        let aliceParty = getPrimaryParty aliceUser
+        let bobParty = getPrimaryParty bobUser
+        (operatorUser, public, _) <- util_create_operator
+        let operator = getPrimaryParty operatorUser
+        submitUser bobUser.userId do
+            exerciseCmd erc20 ERC20_TransferFrom with 
+                requestId = "7"
+                requestor = bobParty
+                requestorAddress = bobAddress
+                from = aliceAddress
+                to = eveAddress
+                value = 2
+        someTransferRequest <- queryContractKey @ForgetfulAssetTransferRequest operator (operator, "7")
+        unsignedTransferRequest <- submit operator do
+            exerciseCmd (fst $ fromSome someTransferRequest) ForgetfulAssetTransferRequest_Accept with  
+                txToSign = "txToSign"
+                msgToSign = "msgToSign"
+                newBoxNonce = 1
+        nowTime <- getTime     
+        signedTransferCid <- submit operator do
+            exerciseCmd unsignedTransferRequest UnsignedAssetTransfer_Sign with
+                    signedTx = "signedTx"
+        someTransferFromInProgress <- queryContractKey @AssetTransferFromInProgress operator (operator, "7")
+        transferEvent <-  (\x -> do
+                        submit operator do
+                        exerciseCmd (fst x) AssetTransferFromInProgress_Authorization_Complete)
+                    (fromSome someTransferFromInProgress)
+        someTransferRequest <- queryContractKey @ForgetfulAssetTransferRequest operator (operator, "7")
+        unsignedTransferRequest <- submit operator do
+            exerciseCmd (fst $ fromSome someTransferRequest) ForgetfulAssetTransferRequest_Accept with  
+                txToSign = "txToSign"
+                msgToSign = "msgToSign"
+                newBoxNonce = 1
+        nowTime <- getTime     
+        signedTransferCid <- submit operator do
+            exerciseCmd unsignedTransferRequest UnsignedAssetTransfer_Sign with
+                    signedTx = "signedTx"
+        someTransferFromInProgress <- queryContractKey @AssetTransferFromInProgress operator (operator, "7")
+        transferEvent <-  (\x -> do
+                        submit operator do
+                        exerciseCmd (fst x) AssetTransferFromInProgress_Sent_Confirmed)
+                    (fromSome someTransferFromInProgress)        
+        someTransferRequest <- queryContractKey @ForgetfulAssetTransferRequest operator (operator, "7")
+        unsignedTransferRequest <- submit operator do
+            exerciseCmd (fst $ fromSome someTransferRequest) ForgetfulAssetTransferRequest_Accept with  
+                txToSign = "txToSign"
+                msgToSign = "msgToSign"
+                newBoxNonce = 1
+        nowTime <- getTime     
+        signedTransferCid <- submit operator do
+            exerciseCmd unsignedTransferRequest UnsignedAssetTransfer_Sign with
+                    signedTx = "signedTx"
+        someTransferFromInProgress <- queryContractKey @AssetTransferFromInProgress operator (operator, "7")
+        someTransferFromInProgress <- queryContractKey @AssetTransferFromInProgress operator (operator, "7")
+        transferEvent <-  (\x -> do
+                        submit operator do
+                        exerciseCmd (fst x) AssetTransferFromInProgress_ReturnedToken)
+                    (fromSome someTransferFromInProgress)        
+        pure ()

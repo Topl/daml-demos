@@ -1,0 +1,16 @@
+module ERC20AppConfig where
+
+
+    template ERC20AppConfig
+        with
+            operator: Party
+            public: Party
+            operatorAddress: Text
+        where
+
+        signatory operator
+
+        observer public
+
+        key operator: Party
+        maintainer key

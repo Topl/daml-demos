@@ -1,20 +1,15 @@
-// Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+// Copyright (c) 2023 Topl LLC. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 import React from "react";
 import LoginScreen from "./LoginScreen";
 import { createLedgerContext } from "@daml/react";
-import DamlHub, {
-  damlHubLogout,
-  isRunningOnHub,
-  usePublicParty,
-  usePublicToken,
-} from "@daml/hub-react";
 import Credentials from "../Credentials";
-import { authConfig } from "../config";
 import { Route, Routes } from 'react-router-dom';
 import MainScreen from "./MainScreen";
-import appContainer from "./appContainer";
+import DeployTokenScreen from "./DeployTokenScreen";
+import { isRunningOnHub } from "@daml/hub-react";
+
 
 // Context for the party of the user.
 export const userContext = createLedgerContext();
@@ -26,6 +21,8 @@ export const publicContext = isRunningOnHub()
   ? createLedgerContext()
   : userContext;
 
+
+
 /**
  * React component for the entry point into the application.
  */
@@ -34,10 +31,17 @@ const App: React.FC = () => {
   const [credentials, setCredentials] = React.useState<
     Credentials | undefined
   >();
+
+  // const [initialized, setInitialized] = React.useState(false);
+
   // a main view developped with bootstrap
   return <Routes>
-    <Route path="/" element={<MainScreen credentials={ credentials} onLogout={ () => setCredentials(undefined) } />} />
-    <Route path="/login" element={<LoginScreen onLogin={ setCredentials}  credentials={credentials}  />} />
+    <Route path="/" element={<MainScreen
+      credentials={credentials}
+      onLogout={() => setCredentials(undefined)} />}>
+      <Route path="deploy" element={<DeployTokenScreen />} />
+    </Route>
+    <Route path="/login" element={<LoginScreen onLogin={async (credentials) => {setCredentials(credentials);  }} credentials={credentials} />} />
   </Routes>
 };
 // APP_END

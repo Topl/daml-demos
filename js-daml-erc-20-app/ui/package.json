@@ -3,7 +3,6 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "@daml.js/1edb5ad26c9d399720f841293d819ef4de3b24818550da8ec211a7cc3b4e8590": "file:daml.js/1edb5ad26c9d399720f841293d819ef4de3b24818550da8ec211a7cc3b4e8590",
     "@daml.js/js-daml-erc20-app-0.1.0": "file:daml.js/js-daml-erc20-app-0.1.0/",
     "@daml/hub-react": "^1.0.0",
     "@daml/ledger": "2.6.0",
@@ -12,10 +11,10 @@
     "bootstrap": "^5.2.3",
     "dotenv": "^8.2.0",
     "jwt-simple": "^0.5.6",
+    "prop-types": "^15.8.1",
     "react": "^17.0.0",
     "react-bootstrap": "^2.7.2",
     "react-dom": "^17.0.0",
-    "react-router-bootstrap": "^0.26.2",
     "react-router-dom": "^6.9.0"
   },
   "scripts": {

@@ -1,0 +1,895 @@
+-- A DAML File implementing ERC20
+
+module Standard.ERC20 where
+
+import DA.Text qualified as T
+import DA.Map qualified as M
+import Topl.Asset
+import Topl.Utils
+import DA.Optional
+import DA.Assert
+import Topl.Transfer
+
+-- We define a contract as response type for the BalanceOf choice (BalanceOf_Response).
+-- The signatory  is the issuer of the token and the requestor.
+-- It has a choice that allows the requestor to archive the contract (BalanceOf_Response_Archive).
+-- It has a choice that allows the issuer to archive the contract.
+-- It has the following parameters:
+-- - The requestor, a Party
+-- - The operator, a Party
+-- - The balance, an integer
+-- - The token symbol, a string
+template BalanceOf_Response
+  with
+    requestor : Party
+    operator : Party
+    address: Text
+    balance : Int
+    symbol : Text
+  where
+    signatory operator, requestor
+
+    -- We define a choice that allows the requestor to archive the contract
+    choice BalanceOf_Response_Archive_Requestor : ()
+      controller requestor
+      do
+        return ()
+
+    -- We define a choice that allows the operator to archive the contract
+    choice BalanceOf_Response_Archive_Operator : ()
+      controller operator
+      do
+        return ()
+
+-- We define a contract as response type for the AllowanceOf choice (AllowanceOf_Response).
+-- The signatory is the issuer of the token and the requestor.
+-- It has the same choices as BalanceOf_Response.
+-- It has the same parameters as BalanceOf_Response.
+template AllowanceOf_Response
+  with
+    requestor : Party
+    operator : Party
+    allowance : Int
+    symbol : Text
+  where
+    signatory operator, requestor
+
+    -- We define a choice that allows the requestor to archive the contract
+    choice AllowanceOf_Response_Archive_Requestor : ()
+      controller requestor
+      do
+        return ()
+
+    -- We define a choice that allows the operator to archive the contract
+    choice AllowanceOf_Response_Archive_Operator : ()
+      controller operator
+      do
+        return ()
+
+
+-- We define a contract as response type for the TotalSuply choice (TotalSuply_Response).
+template TotalSuply_Response
+  with
+    requestor : Party
+    issuer : Party
+    totalSupply : Int
+    symbol : Text
+  where
+    signatory issuer, requestor
+
+    -- We define a choice that allows the requestor to archive the contract
+    choice TotalSuply_Response_Archive_Requestor : ()
+      controller requestor
+      do
+        return ()
+
+    -- We define a choice that allows the issuer to archive the contract
+    choice TotalSuply_Response_Archive_Issuer : ()
+      controller issuer
+      do
+        return ()
+
+
+-- We define a contract that is the root of our ERC20 implementation
+-- in includes a parameter for the following fields
+-- - The issuer of the token, a Party
+-- - The issuer address, a string
+-- - The public party, a Party
+-- - The name of the token (e.g. "Ethereum"), an optional string of maximum 32 characters
+-- - The symbol for the token (e.g. "ETH")
+-- - The total supply of the token, an integer
+template ERC20
+  with
+    issuer : Party
+    operator : Party
+    operatorAddress : Text
+    public : Party
+    name : Optional Text
+    symbol : Text
+    assetCode: AssetCode
+    totalSupply : Int
+  where
+    -- the operator is a signatory so that you cannot
+    -- create an ERC20 contract without the operator's approval
+    signatory issuer, operator
+
+    observer public
+    -- define an index by symbol
+    key (issuer, symbol): (Party, Text)
+
+    maintainer key._1
+
+    ensure
+      totalSupply > 0 && -- validate the total supply
+      T.length symbol > 0 -- validate the symbol
+
+    -- We define a choice that allows to check the balance of an account by address
+    nonconsuming choice ERC20_BalanceOf : ContractId BalanceOf_Response
+      with
+        requestor : Party
+        address : Text
+      controller requestor
+      do
+        -- We use the `fetchByKey` function to get the account by address
+        someAccountCid <- lookupByKey @Account (operator, address, assetCode.issuerAddress, symbol)
+        case someAccountCid of
+          None -> do
+            -- if the account does not exist, we create it
+            create BalanceOf_Response with
+                  balance = 0
+                  ..
+          Some accountCid -> do
+            -- if the account exists, we exercise the choice Account_BalanceOf
+            exercise accountCid Account_BalanceOf with ..
+
+    -- We define a choice that allows to check the total supply of the token
+    nonconsuming choice ERC20_TotalSupply : ContractId TotalSuply_Response
+      with
+        requestor : Party
+      controller requestor
+      do
+        create TotalSuply_Response with ..
+
+    -- Define the choice ERC20_Transfer, takes the following parameters
+    -- - the requestor, a Party
+    -- - the address of the account to transfer to, a string
+    -- - the value to transfer, an integer
+    -- the choice returns a ContractId ForgetfulAssetTransferRequest
+    -- the body finds an Account contract by key and exercises the choice Account_Transfer
+    nonconsuming choice ERC20_Transfer: ContractId ForgetfulAssetTransferRequest
+      with
+        requestId : Text
+        requestor : Party
+        from: Text
+        to : Text
+        value : Int
+      controller requestor
+      do
+        someAccount <- lookupByKey @Account (operator, from, assetCode.issuerAddress, symbol)
+        case someAccount of
+          None -> do
+            someUnclaimedAccount <- lookupByKey @UnclaimedAccount (operator, from, symbol)
+            case someUnclaimedAccount of
+              None -> do
+                unclaimedAccountCid <- create UnclaimedAccount with 
+                  balance = 0
+                  address = from
+                  someTransferringTo = None
+                  issuerAddress = assetCode.issuerAddress
+                  ..
+                exercise unclaimedAccountCid UnclaimedAccount_Transfer with ..
+              Some unclaimedAccountCid -> do
+                exercise unclaimedAccountCid UnclaimedAccount_Transfer with ..
+          Some accountCid -> do
+            exercise accountCid Account_Transfer with ..
+
+
+    -- We define a choice that allows to check the allowance of an account by address
+    nonconsuming choice ERC20_Allowance : ContractId AllowanceOf_Response
+      with
+        requestor : Party
+        ownerAddress : Text
+        spenderAddress : Text
+      controller requestor
+      do
+        -- this works because only the owner can see an account
+        (accountCid, _) <- fetchByKey @Account (issuer, ownerAddress, assetCode.issuerAddress, symbol)
+        exercise accountCid Account_Allowance with ..
+
+    -- We define a choice that
+    -- - allow the owner to approve a spender to transfer assets from the owner's account
+    -- - takes the following parameters
+    --   - the requestor, a Party
+    --   - the address of the account to approve, a string
+    --   - the spender, a Party
+    --   - the spenderAddress, a string
+    --   - the amount to approve, an integer
+    -- - the choice returns a ContractId ApprovalEvent
+    -- - the body finds an Account contract by key and exercises the choice Account_Approve
+    nonconsuming choice ERC20_Approve : ContractId ForgetfulAssetTransferRequest
+      with
+        requestor : Party
+        requestId: Text
+        ownerAddress : Text
+        spender: Party
+        spenderAddress : Text
+        value : Int
+      controller requestor
+      do
+        (accountCid, _) <- fetchByKey @Account (operator, ownerAddress, assetCode.issuerAddress, symbol)
+        -- we send an NFT to the spender so that they can transfer the assets
+        create UniqueAssetMintingRequest with
+            requestor = issuer
+            to = [ (spenderAddress, 1) ]
+            quantity = 1
+            someCommitRoot = None
+            someMetadata = None
+            shortName = "ALLOW"
+            fee = 100
+            ..
+        exercise accountCid Account_Approve with ..
+
+    -- We define a choice that allows to transfer assets from an account to another account
+    -- - takes the following parameters
+    --   - the requestor, a Party
+    --   - the address of ther requestor, a string
+    --   - the address of the account to transfer from, a string
+    --   - the address of the account to transfer to, a string
+    --   - the value to transfer, an integer
+    -- - the choice returns a ContractId ForgetfulAssetTransferRequest
+    nonconsuming choice ERC20_TransferFrom : ContractId ForgetfulAssetTransferRequest
+      with
+        requestId : Text
+        requestor : Party
+        requestorAddress : Text
+        from: Text
+        to : Text
+        value : Int
+      controller requestor
+      do
+        -- we get the NFT from the allowance map
+        (_, fromAccount) <- fetchByKey @Account (operator, from, assetCode.issuerAddress, symbol)
+        
+        let someAsset = (M.lookup requestorAddress fromAccount.allowances)
+        assert $ isSome someAsset
+        create AssetTransferFromInProgress with 
+              issuerAddress = assetCode.issuerAddress
+              status = NotAuthorized
+              ..
+        -- we send the NFT that
+        create ForgetfulAssetTransferRequest with
+                          from = [ requestorAddress ]
+                          to = [ (to, 1) ]
+                          changeAddress = requestorAddress
+                          quantity = 1
+                          someCommitRoot = None
+                          someMetadata = None
+                          fee = 100
+                          assetCode = fst $ fromSome someAsset
+                          ..
+
+-- We define the ApprovalEvent contract
+-- It includes a parameter for the following fields
+-- - The operator of the token, a Party
+-- - The owner of the account, a Party
+-- - The spender of the account, a Party
+-- - The token symbol, a string
+-- - The fromAddress of the account
+-- - The address of the spender
+-- - The amount of the approval
+template ApprovalEvent
+  with
+    operator : Party
+    owner : Party
+    spender : Party
+    public: Party
+    symbol : Text
+    address : Text
+    spenderAddress : Text
+    value : Int
+  where
+    signatory operator, owner
+
+    observer spender, public
+
+    -- define an index by owner
+    key (operator, symbol, address, spenderAddress) : (Party, Text, Text, Text)
+    maintainer key._1
+
+    -- validate the address
+    ensure  ((T.length address) > 0)
+
+    -- We define a choice that allows the issuer to archive the contract
+    choice ApprovalEvent_Archive_Issuer : ()
+      controller operator
+      do
+        return ()
+
+-- We defien the TransferEvent contract
+-- It includes a parameter for the following fields
+-- - The operator of the token, a Party
+-- - The from of the transfer, a Party
+-- - The recipient of the transfer, a Party
+-- - The token symbol, a string
+-- - The fromAddress of the account
+-- - The toAddress of the recipient
+-- - The amount transfered
+template TransferEvent
+  with
+    operator : Party
+    from : Party
+    to : Optional Party
+    public: Party
+    symbol : Text
+    fromAddress : Text
+    toAddress : Text
+    value : Int
+  where
+    signatory operator
+
+    observer from, to, public
+
+
+    -- validate the address
+    ensure  ((T.length fromAddress) > 0) && ((T.length toAddress) > 0)
+
+    -- We define a choice that allows the operator to archive the contract
+    choice TransferEvent_Archive_Issuer : ()
+      controller operator
+      do
+        return ()
+
+template ClaimAccountInvitation
+  with 
+    requestId : Text
+    operator : Party
+    operatorAddress : Text
+    address : Text
+    symbol : Text
+    claimant: Party
+  where
+    signatory operator
+
+    key (operator, claimant, address, symbol) : (Party, Party, Text, Text)
+    maintainer key._1
+
+    observer claimant
+
+    ensure ((T.length address) > 0)
+
+    choice ClaimAccountInvitation_Claim : ContractId TransferRequest
+      controller claimant
+      do
+        create TransferRequest with
+          user = claimant
+          from = [ address ]
+          to = [ (operatorAddress, 100) ]
+          changeAddress = address
+          fee = 100
+          ..
+
+    choice ClaimAccountInvitation_Archive : ()
+      controller operator
+      do
+        return ()
+
+template UnclaimedAccount
+  with
+    operator : Party
+    public : Party
+    balance : Int
+    address : Text
+    issuerAddress: Text
+    symbol : Text
+    someTransferringTo: Optional Text
+  where
+    signatory operator
+
+    observer public
+
+    -- define an index by owner
+    key (operator, address, symbol) : (Party, Text, Text)
+    maintainer key._1
+
+    choice UnclaimedAccount_Claim_Invite : ContractId ClaimAccountInvitation
+      with
+        requestId : Text
+        operatorAddress : Text
+        owner : Party
+      controller operator
+        do
+          create ClaimAccountInvitation with
+            address = address
+            symbol = symbol
+            claimant = owner
+            ..
+
+    -- We define a choice to return the balance of the account
+    -- we have a requestor paramenter because this choice can be exercised by anyone
+    nonconsuming choice UnclaimedAccount_BalanceOf : ContractId BalanceOf_Response
+      with
+        requestor : Party
+      controller requestor
+      do
+        create BalanceOf_Response with ..
+    
+    choice UnclaimedAccount_Transfer : ContractId ForgetfulAssetTransferRequest
+      with
+        requestId : Text
+        requestor : Party
+        to : Text
+        value : Int
+      controller requestor
+      do
+        someTransferringTo === None
+        let assetCode = AssetCode
+                        with
+                            version = 1
+                            shortName = symbol
+                            ..
+        create UnclaimedAccount with
+          someTransferringTo = Some to
+          ..
+        create UnclaimedAccountTransferInProgress with 
+                owner = requestor
+                fromAddress = address
+                toAddress = to
+                ..
+        create ForgetfulAssetTransferRequest with
+                          from = [ address ]
+                          to = [ (to, value) ]
+                          changeAddress = address
+                          quantity = value
+                          someCommitRoot = None
+                          someMetadata = None
+                          fee = 100
+                          ..
+
+    choice UnclaimedAccount_Complete_Reception: ContractId TransferEvent
+      with
+        from: Party
+        fromAddress : Text
+        value : Int
+      controller operator
+      do
+        create UnclaimedAccount with
+          balance = balance + value
+          someTransferringTo = None
+          ..
+        create TransferEvent with
+          to = None
+          toAddress = address
+          ..
+    choice UnclaimedAccount_Complete_Transfer : ContractId TransferEvent
+      with
+        owner: Party
+        toAddress : Text
+        value : Int
+      controller operator
+      do
+        assert $ isSome someTransferringTo
+        someAccountCid <- lookupByKey @Account (operator, toAddress, issuerAddress, symbol)
+        case someAccountCid of
+          None -> do 
+                    someUnclaimedAccountCid <- lookupByKey @UnclaimedAccount (operator, address, symbol)
+                    case someUnclaimedAccountCid of
+                      Some unclaimedAccount -> do
+                        exercise unclaimedAccount UnclaimedAccount_Complete_Reception with
+                          from = owner
+                          fromAddress = address
+                          ..
+                      None -> do
+                          newAccount <- create UnclaimedAccount with
+                            balance = value
+                            ..
+                          exercise newAccount UnclaimedAccount_Complete_Reception with
+                            from = owner
+                            fromAddress = address
+                            value = value
+                            ..
+          Some accountCid -> exercise accountCid Account_Complete_Reception with
+                              from = owner
+                              fromAddress = address
+                              value = value
+                              ..
+
+
+-- We define a contract that represents an account for a token
+-- It includes a parameter for the following fields
+-- - The operator, a Party
+-- - The owner of the account, a Party
+-- - The token symbol, a string
+-- - The balance of the account, an integer
+-- - The address of the account
+-- - A map for the allowances of the account
+template Account
+  with
+    operator : Party
+    owner : Party
+    public: Party
+    symbol : Text
+    balance : Int
+    issuerAddress: Text
+    address : Text
+    allowances : M.Map Text (AssetCode, Int)
+    someTransferringTo: Optional Text
+  where
+    signatory owner, operator
+
+    observer public
+
+    -- define an index by owner
+    key (operator, address, issuerAddress, symbol) : (Party, Text, Text, Text)
+    maintainer key._1
+
+    -- validate the address
+    ensure  ((T.length address) > 0)
+
+    -- We define a choice to return the balance of the account
+    -- we have a requestor paramenter because this choice can be exercised by anyone
+    nonconsuming choice Account_BalanceOf : ContractId BalanceOf_Response
+      with
+        requestor : Party
+      controller requestor
+      do
+        create BalanceOf_Response with 
+            balance = (sum (fmap (\x -> snd x) $ M.values allowances)) + balance
+            ..
+    
+    choice Account_Complete_Reception: ContractId TransferEvent
+      with
+        from: Party
+        fromAddress : Text
+        value : Int
+      controller operator
+      do
+        create Account with
+          balance = balance + value
+          ..
+        create TransferEvent with
+          to = Some owner
+          toAddress = address
+          ..
+    choice Account_Complete_Approval: ContractId ApprovalEvent
+      with
+        fromAddress : Text
+        spender: Party
+        spenderAddress: Text
+        value : Int
+        newAllowances : M.Map Text (AssetCode, Int)
+      controller operator
+      do
+        create Account with
+          allowances = newAllowances
+          balance = balance - value
+          someTransferringTo = None
+          ..
+        create ApprovalEvent with
+          ..
+
+    choice Account_Complete_Transfer : ContractId TransferEvent
+      with
+        toAddress : Text
+        value : Int
+      controller operator
+      do
+        assert $ isSome someTransferringTo
+        create Account with
+          someTransferringTo = None
+          balance = balance - value
+          ..
+        someAccountCid <- lookupByKey @Account (operator, toAddress, issuerAddress, symbol)
+        case someAccountCid of
+          None -> do 
+                    someUnclaimedAccountCid <- lookupByKey @UnclaimedAccount (operator, toAddress, symbol)
+                    case someUnclaimedAccountCid of
+                      Some unclaimedAccount -> do
+                        exercise unclaimedAccount UnclaimedAccount_Complete_Reception with
+                          from = owner
+                          fromAddress = address
+                          ..
+                      None -> do
+                          newAccount <- create UnclaimedAccount with
+                            balance = 0
+                            address = toAddress
+                            ..
+                          exercise newAccount UnclaimedAccount_Complete_Reception with
+                            from = owner
+                            fromAddress = address
+                            value = value
+                            ..
+          Some accountCid -> exercise accountCid Account_Complete_Reception with
+                              from = owner
+                              fromAddress = address
+                              value = value
+                              ..
+
+    choice Account_Complete_TransferFrom : ContractId TransferEvent
+      with
+        spenderAddress: Text
+        nftToken: AssetCode
+        toAddress : Text
+        value : Int
+      controller operator
+      do
+        let currentAllowanceForSpender = snd (fromSome $ M.lookup spenderAddress allowances)
+        assert $ currentAllowanceForSpender >= value
+        let newAllowances = M.insert spenderAddress (nftToken, currentAllowanceForSpender - value) allowances
+        create Account with
+          someTransferringTo = None
+          allowances = newAllowances
+          ..
+        someAccountCid <- lookupByKey @Account (operator, toAddress, issuerAddress, symbol)
+        case someAccountCid of
+          None -> do 
+                    someUnclaimedAccountCid <- lookupByKey @UnclaimedAccount (operator, toAddress, symbol)
+                    case someUnclaimedAccountCid of
+                      Some unclaimedAccount -> do
+                        exercise unclaimedAccount UnclaimedAccount_Complete_Reception with
+                          from = owner
+                          fromAddress = address
+                          ..
+                      None -> do
+                          newAccount <- create UnclaimedAccount with
+                            balance = 0
+                            address = toAddress
+                            ..
+                          exercise newAccount UnclaimedAccount_Complete_Reception with
+                            from = owner
+                            fromAddress = address
+                            value = value
+                            ..
+          Some accountCid -> exercise accountCid Account_Complete_Reception with
+                              from = owner
+                              fromAddress = address
+                              value = value
+                              ..
+
+    -- We define a choice to transfer assets to another account
+    -- We don't have requestor parameter because this choice can only be exercised by the owner
+    choice Account_Transfer : ContractId ForgetfulAssetTransferRequest
+      with
+        requestId : Text
+        to : Text
+        value : Int
+      controller owner
+      do
+        someTransferringTo === None
+        let assetCode = AssetCode
+                        with
+                            issuerAddress = address
+                            version = 1
+                            shortName = symbol
+        create Account with
+          someTransferringTo = Some to
+          ..
+        create AccountTransferInProgress with 
+              fromAddress = address
+              toAddress = to
+              ..
+        create ForgetfulAssetTransferRequest with
+                          from = [ address ]
+                          to = [ (to, value) ]
+                          changeAddress = address
+                          quantity = value
+                          someCommitRoot = None
+                          someMetadata = None
+                          fee = 100
+                          requestor = owner
+                          ..
+
+
+    -- We define a choice Allowance to return the allowance of a given account
+    -- The body looks up the allowance in the map and returns it
+    -- We have a requestor paramenter because this choice can be exercised by anyone
+    choice Account_Allowance : ContractId AllowanceOf_Response
+      with
+        requestor : Party
+        spenderAddress : Text
+      controller requestor
+      do
+        let allowance = M.lookup spenderAddress allowances
+        create AllowanceOf_Response with 
+              allowance = (optional 0 snd allowance)
+              ..
+
+    -- We define a choice to approve a spender to transfer assets from the owner's account
+    -- The controller is the owner of the account
+    -- requestor is not a parameter
+    -- The body updates the allowances map with the new allowance
+    -- and creates a new Account contract with the updated allowances map
+    -- and returns the new approval event
+    choice Account_Approve : ContractId ForgetfulAssetTransferRequest
+      with
+        spender: Party
+        requestId : Text
+        assetCode: AssetCode
+        operatorAddress : Text
+        spenderAddress : Text
+        value : Int
+      controller owner
+      do
+        create ApprovalTransferInProgress with 
+              fromAddress = address
+              ..
+        create Account with
+              someTransferringTo = Some operatorAddress
+              ..
+        create ForgetfulAssetTransferRequest with
+                          requestor = owner
+                          from = [ address ]
+                          to = [ (operatorAddress, value) ]
+                          changeAddress = address
+                          quantity = value
+                          someCommitRoot = None
+                          someMetadata = None
+                          fee = 100
+                          ..
+
+
+
+template AccountTransferInProgress with
+      operator : Party
+      owner: Party
+      public: Party
+      requestId : Text
+      issuerAddress: Text
+      fromAddress: Text
+      toAddress: Text
+      value: Int
+      symbol : Text
+    where
+      signatory operator, owner
+      key (operator, requestId) : (Party, Text)
+      maintainer key._1
+
+      choice TransferInProgress_Complete : ContractId TransferEvent
+        controller operator
+        do
+          (accountCid, _) <- fetchByKey @Account (operator, fromAddress, issuerAddress, symbol)
+          (assetTransferCid, _) <- fetchByKey @SignedAssetTransfer (operator, requestId)
+          exercise assetTransferCid SignedAssetTransfer_Archive
+          exercise accountCid Account_Complete_Transfer with ..
+
+
+template UnclaimedAccountTransferInProgress with
+      operator : Party
+      owner: Party
+      public: Party
+      requestId : Text
+      fromAddress: Text
+      toAddress: Text
+      value: Int
+      issuerAddress: Text
+      symbol : Text
+    where
+      signatory operator, owner
+      key (operator, requestId) : (Party, Text)
+      maintainer key._1
+
+      choice UnclaimedTransferInProgress_Complete : ContractId TransferEvent
+        controller operator
+        do
+          (accountCid, account) <- fetchByKey @UnclaimedAccount (operator, fromAddress, symbol)
+          (assetTransferCid, _) <- fetchByKey @SignedAssetTransfer (operator, requestId)
+          exercise assetTransferCid SignedAssetTransfer_Archive
+          create Account with
+            address = fromAddress
+            someTransferringTo = None
+            balance = account.balance - value
+            allowances = M.empty
+            ..
+          exercise accountCid UnclaimedAccount_Complete_Transfer with ..
+
+data AssetTransferFromInProgress_Status = 
+        NotAuthorized | 
+        Authorized | 
+        AssetTransferInProgressSent
+      deriving (Eq, Show)
+
+template AssetTransferFromInProgress with
+        operator: Party
+        requestor : Party
+        public: Party
+        requestId : Text
+        issuerAddress: Text
+        operatorAddress: Text
+        requestorAddress : Text
+        from: Text
+        to : Text
+        symbol: Text
+        value : Int
+        status : AssetTransferFromInProgress_Status
+    where
+      signatory operator, requestor
+
+      key (operator, requestId) : (Party, Text)
+      maintainer key._1
+
+      choice AssetTransferFromInProgress_Authorization_Complete : ContractId AssetTransferFromInProgress
+        controller operator
+        do
+          status === NotAuthorized
+          (accountCid, account) <- fetchByKey @Account (operator, from, issuerAddress, symbol)
+          (assetTransferCid, assetTransfer) <- fetchByKey @SignedAssetTransfer (operator, requestId)
+          exercise assetTransferCid SignedAssetTransfer_Archive
+          let assetCode = AssetCode
+                with
+                    version = 1
+                    shortName = symbol
+                    ..
+          create ForgetfulAssetTransferRequest with
+                            requestor = operator
+                            from = [ operatorAddress ]
+                            to = [ (to, value) ]
+                            changeAddress = operatorAddress
+                            quantity = value
+                            someCommitRoot = None
+                            someMetadata = None
+                            fee = 100
+                            ..
+          create AssetTransferFromInProgress with status = Authorized, ..
+
+      choice AssetTransferFromInProgress_Sent_Confirmed : ContractId TransferEvent
+        controller operator
+        do
+          status === Authorized
+          (accountCid, account) <- fetchByKey @Account (operator, from, issuerAddress, symbol)
+          (assetTransferCid, assetTransfer) <- fetchByKey @SignedAssetTransfer (operator, requestId)
+          exercise assetTransferCid SignedAssetTransfer_Archive
+          create AssetTransferFromInProgress with status = AssetTransferInProgressSent, ..
+          let assetCode = AssetCode
+                with
+                    version = 1
+                    shortName = "ALLOW"
+                    ..
+          create ForgetfulAssetTransferRequest with
+                            requestor = operator
+                            from = [ operatorAddress ]
+                            to = [ (requestorAddress, 1) ]
+                            changeAddress = operatorAddress
+                            quantity = 1
+                            someCommitRoot = None
+                            someMetadata = None
+                            fee = 100
+                            ..
+          exercise accountCid Account_Complete_TransferFrom with
+                            spenderAddress = requestorAddress
+                            toAddress = to
+                            nftToken = assetTransfer.assetCode
+                            ..
+      choice AssetTransferFromInProgress_ReturnedToken : ()
+        controller operator
+        do
+          status === AssetTransferInProgressSent
+          (accountCid, account) <- fetchByKey @Account (operator, from, issuerAddress, symbol)
+          (assetTransferCid, assetTransfer) <- fetchByKey @SignedAssetTransfer (operator, requestId)
+          exercise assetTransferCid SignedAssetTransfer_Archive
+
+template ApprovalTransferInProgress with
+      operator : Party
+      owner: Party
+      public: Party
+      requestId : Text
+      fromAddress: Text
+      spender: Party
+      spenderAddress: Text
+      value: Int
+      symbol : Text
+      issuerAddress: Text
+    where
+      signatory operator, owner
+      key (operator, requestId) : (Party, Text)
+      maintainer key._1
+
+      choice ApprovalTransferInProgress_Complete : ContractId ApprovalEvent
+        controller operator
+        do
+          (accountCid, account) <- fetchByKey @Account (operator, fromAddress, issuerAddress, symbol)
+          (assetTransferCid, _) <- fetchByKey @SignedAssetTransfer (operator, requestId)
+          (assetMintingCid, assetMinting) <- fetchByKey @SignedAssetMinting (operator, requestId)
+          let newAllowances = M.insert spenderAddress (assetMinting.assetCode, value) account.allowances
+          exercise assetTransferCid SignedAssetTransfer_Archive
+          exercise assetMintingCid SignedAssetMinting_Archive
+          exercise accountCid Account_Complete_Approval with
+                            ..
